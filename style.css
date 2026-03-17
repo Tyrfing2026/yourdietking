@@ -1,0 +1,146 @@
+/* --- 基礎樣式 --- */
+:root {
+    --emerald-500: #10b981;
+    --rose-500: #f43f5e;
+    --sky-400: #38bdf8;
+    --slate-800: #1e293b;
+}
+
+body {
+    background-color: #f8fafc;
+    /* 更換為現代字體棧 */
+    font-family: 'Inter', 'Noto Sans TC', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    -webkit-tap-highlight-color: transparent;
+    -webkit-font-smoothing: antialiased;
+    letter-spacing: -0.011em;
+}
+
+/* 鎖定背景捲動 */
+body.no-scroll {
+    overflow: hidden !important;
+    position: fixed;
+    width: 100%;
+}
+
+.glass-card {
+    background: rgba(255, 255, 255, 0.98);
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
+    border: 1px solid rgba(226, 232, 240, 0.7);
+}
+
+.progress-bar {
+    transition: width 0.8s cubic-bezier(0.34, 1.56, 0.64, 1), stroke-dashoffset 0.8s;
+}
+
+/* --- 常用食物選單 --- */
+.dropdown-content {
+    display: none;
+    position: absolute;
+    width: 100%;
+    top: 100%;
+    left: 0;
+    z-index: 6000;
+    max-height: 240px;
+    overflow-y: auto !important;
+    background: white;
+    margin-top: 0.6rem;
+    border-radius: 1.5rem;
+    box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.15);
+    border: 1px solid #f1f5f9;
+    overscroll-behavior: contain !important;
+    -webkit-overflow-scrolling: touch;
+    touch-action: pan-y;
+}
+
+.dropdown-active .dropdown-content { 
+    display: block !important; 
+    animation: slideIn 0.25s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+.dropdown-active #dropdownArrowIcon {
+    transform: rotate(180deg);
+}
+
+@keyframes slideIn { from { opacity: 0; transform: translateY(-12px) scale(0.98); } to { opacity: 1; transform: translateY(0) scale(1); } }
+
+/* --- 彈窗樣式 --- */
+.modal-overlay {
+    display: none;
+    position: fixed;
+    inset: 0;
+    z-index: 1000;
+    background: rgba(15, 23, 42, 0.55);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    align-items: center;
+    justify-content: center;
+    padding: 1.25rem;
+}
+.modal-overlay.active { display: flex; }
+
+.calendar-modal {
+    display: none;
+    position: absolute;
+    bottom: calc(100% + 15px);
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 500;
+    width: 300px;
+    background: white;
+    border-radius: 2.25rem;
+    box-shadow: 0 30px 60px -12px rgba(0, 0, 0, 0.2);
+    padding: 1.5rem;
+    border: 1px solid rgba(226, 232, 240, 0.8);
+    overscroll-behavior: contain;
+}
+.calendar-modal.active { display: block; animation: popIn 0.35s cubic-bezier(0.17, 0.89, 0.32, 1.28); }
+
+/* --- UI 元件細節 --- */
+.action-btn { display: flex; flex-direction: column; align-items: center; padding: 1.25rem 0.5rem; border-radius: 1.75rem; transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1); }
+.action-btn:active { transform: scale(0.92); }
+.action-btn span { font-size: 11px; font-weight: 900; margin-top: 0.6rem; text-transform: uppercase; letter-spacing: 0.05em; }
+
+.modal-input { 
+    width: 100%; 
+    padding: 1rem 1.25rem; 
+    border-radius: 1.25rem; 
+    background: #f1f5f9; 
+    outline: none; 
+    font-weight: 700; 
+    border: 2px solid transparent; 
+    transition: all 0.25s; 
+}
+.modal-input:focus { 
+    background: white; 
+    border-color: #cbd5e1; 
+    box-shadow: 0 4px 12px rgba(0,0,0,0.03);
+}
+
+.input-label { 
+    display: block; 
+    font-size: 10px; 
+    font-weight: 900; 
+    margin-bottom: 0.4rem; 
+    text-transform: uppercase; 
+    color: #94a3b8; 
+    letter-spacing: 0.1em;
+    padding-left: 0.2rem;
+}
+
+.day-cell { aspect-ratio: 1; display: flex; align-items: center; justify-content: center; cursor: pointer; border-radius: 14px; font-size: 0.8rem; font-weight: 700; color: #475569; transition: all 0.2s; }
+.day-cell:hover:not(.day-other) { background: #f1f5f9; color: var(--emerald-500); }
+.day-selected { background: var(--emerald-500) !important; color: white !important; font-weight: 900; box-shadow: 0 8px 16px -4px rgba(16, 185, 129, 0.4); }
+.day-other { color: #e2e8f0; pointer-events: none; }
+
+/* 捲軸美化 */
+.custom-scrollbar::-webkit-scrollbar { width: 6px; }
+.custom-scrollbar::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 10px; border: 2px solid white; }
+
+/* 動畫補強 */
+@keyframes popIn { from { opacity: 0; transform: translateX(-50%) translateY(15px) scale(0.92); } to { opacity: 1; transform: translateX(-50%) translateY(0) scale(1); } }
+@keyframes modalIn { from { opacity: 0; transform: scale(0.92) translateY(30px); } to { opacity: 1; transform: scale(1) translateY(0); } }
+.animate-modalIn { animation: modalIn 0.45s cubic-bezier(0.16, 1, 0.3, 1) forwards; }
+
+@keyframes fadeIn { from { opacity: 0; transform: translateY(12px); } to { opacity: 1; transform: translateY(0); } }
+.animate-fadeIn { animation: fadeIn 0.4s ease-out forwards; }
