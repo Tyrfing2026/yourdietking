@@ -283,7 +283,7 @@ window.ui = {
             if (e.type === 'food') {
                 const isCommon = commonFoods.some(cf => cf.name === e.name);
                 // 修改邏輯：份數標記文字改為細體，並確保始終顯示
-                const servingText = `<span class="text-[#9E9796] text-[10px] font-normal ml-1 tabular-nums">×${e.srv || 1}</span>`;
+                const servingText = `<span class="text-[#9E9796] text-[10px] font-bold ml-1 tabular-nums">×${e.srv || 1}</span>`;
                 
                 return `
                     <div class="glass-card p-4 rounded-3xl flex items-center justify-between animate-fadeIn gap-2">
