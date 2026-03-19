@@ -265,7 +265,7 @@ window.ui = {
         if (targetEl) targetEl.innerText = max;
     },
 
-    // 核心渲染邏輯：顯示 A ×4 格式
+    // 核心渲染邏輯：優化長名稱顯示與份數樣式
     renderList(food, water) {
         const list = document.getElementById('historyList');
         const all = [...food.map(e=>({...e, sort: e.id})), ...water.map(e=>({...e, sort: e.id}))].sort((a,b)=>b.sort - a.sort);
@@ -278,22 +278,24 @@ window.ui = {
         list.innerHTML = all.map(e => {
             if (e.type === 'food') {
                 const isCommon = commonFoods.some(cf => cf.name === e.name);
-                // 判斷是否顯示份數倍率
-                const servingText = (e.srv && e.srv !== 1) ? `<span class="text-emerald-500 font-black ml-1 tabular-nums">×${e.srv}</span>` : '';
+                // 修改點：份數標記改為灰色 (text-slate-400) 與細體 (font-normal)
+                const servingText = (e.srv && e.srv !== 1) ? `<span class="text-slate-400 font-normal ml-1 tabular-nums">×${e.srv}</span>` : '';
                 
                 return `
-                    <div class="glass-card p-4 rounded-3xl flex items-center justify-between animate-fadeIn">
-                        <div class="flex items-center gap-4 cursor-pointer flex-1" onclick="app.editFoodEntry(${e.id})">
-                            <div class="w-10 h-10 bg-blue-50 rounded-2xl flex items-center justify-center text-blue-500"><i data-lucide="utensils" size="18"></i></div>
-                            <div>
+                    <div class="glass-card p-4 rounded-3xl flex items-center justify-between animate-fadeIn gap-3">
+                        <div class="flex items-center gap-4 cursor-pointer overflow-hidden flex-1" onclick="app.editFoodEntry(${e.id})">
+                            <div class="w-10 h-10 bg-blue-50 rounded-2xl flex-shrink-0 flex items-center justify-center text-blue-500"><i data-lucide="utensils" size="18"></i></div>
+                            <div class="overflow-hidden">
                                 <div class="flex items-center gap-2">
-                                    <span class="font-bold text-sm text-slate-800">${e.name}${servingText}</span>
-                                    <span class="text-[9px] text-slate-300 font-bold tabular-nums">${e.time}</span>
+                                    <!-- 修改點：加入 truncate 與 max-width 防止長名稱撐破版面 -->
+                                    <span class="font-bold text-sm text-slate-800 truncate max-w-[120px] sm:max-w-[200px] inline-block">${e.name}</span>
+                                    ${servingText}
+                                    <span class="text-[9px] text-slate-300 font-bold tabular-nums ml-auto">${e.time}</span>
                                 </div>
                                 <div class="text-[9px] font-bold text-slate-400 tabular-nums uppercase tracking-tighter">P ${e.p.toFixed(1)} | C ${e.c.toFixed(1)} | F ${e.f.toFixed(1)}</div>
                             </div>
                         </div>
-                        <div class="flex items-center gap-1">
+                        <div class="flex items-center gap-1 flex-shrink-0">
                             <div class="text-right mr-2"><span class="text-sm font-black text-slate-700 tabular-nums">${e.kcal}</span><span class="text-[8px] font-bold text-slate-300 block leading-none">kcal</span></div>
                             <button onclick="app.toggleCommonFromHistory(${e.id})" class="${isCommon ? 'text-amber-400' : 'text-slate-200'} p-2"><i data-lucide="star" ${isCommon ? 'fill="currentColor"' : ''} size="16"></i></button>
                             <button onclick="app.deleteEntry('food', ${e.id})" class="text-slate-200 hover:text-rose-500 p-2"><i data-lucide="x" size="16"></i></button>
@@ -301,18 +303,18 @@ window.ui = {
                     </div>`;
             } else {
                 return `
-                    <div class="glass-card p-4 rounded-3xl flex items-center justify-between animate-fadeIn">
-                        <div class="flex items-center gap-4">
-                            <div class="w-10 h-10 bg-sky-50 rounded-2xl flex items-center justify-center text-sky-500"><i data-lucide="droplets" size="18"></i></div>
-                            <div>
+                    <div class="glass-card p-4 rounded-3xl flex items-center justify-between animate-fadeIn gap-3">
+                        <div class="flex items-center gap-4 overflow-hidden flex-1">
+                            <div class="w-10 h-10 bg-sky-50 rounded-2xl flex-shrink-0 flex items-center justify-center text-sky-500"><i data-lucide="droplets" size="18"></i></div>
+                            <div class="overflow-hidden">
                                 <div class="flex items-center gap-2">
                                     <span class="font-bold text-sm text-slate-800">水分補充</span>
-                                    <span class="text-[9px] text-slate-300 font-bold tabular-nums">${e.time}</span>
+                                    <span class="text-[9px] text-slate-300 font-bold tabular-nums ml-auto">${e.time}</span>
                                 </div>
                                 <div class="text-[9px] font-bold text-sky-400 tabular-nums">💧 ${e.amount} ml</div>
                             </div>
                         </div>
-                        <button onclick="app.deleteEntry('water', ${e.id})" class="text-slate-200 hover:text-rose-500 p-2"><i data-lucide="x" size="16"></i></button>
+                        <button onclick="app.deleteEntry('water', ${e.id})" class="text-slate-200 hover:text-rose-500 p-2 flex-shrink-0"><i data-lucide="x" size="16"></i></button>
                     </div>`;
             }
         }).join('');
