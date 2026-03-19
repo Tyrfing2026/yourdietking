@@ -282,7 +282,9 @@ window.ui = {
         list.innerHTML = all.map(e => {
             if (e.type === 'food') {
                 const isCommon = commonFoods.some(cf => cf.name === e.name);
-                const servingText = (e.srv && e.srv !== 1) ? `<span class="text-[#9E9796] text-xs font-black ml-1 tabular-nums">×${e.srv}</span>` : '';
+                // 修改邏輯：移除 !== 1 的判斷，讓份數標記始終顯示（若無份數資料則預設顯示 1）
+                const servingText = `<span class="text-[#9E9796] text-xs font-black ml-1 tabular-nums">×${e.srv || 1}</span>`;
+                
                 return `
                     <div class="glass-card p-4 rounded-3xl flex items-center justify-between animate-fadeIn gap-3">
                         <div class="flex items-center gap-4 cursor-pointer overflow-hidden flex-1" onclick="app.editFoodEntry(${e.id})">
