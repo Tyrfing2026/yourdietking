@@ -155,10 +155,10 @@
             
             <!-- 模板選擇 (改為自定義選單) -->
             <div class="mb-8 relative" id="templateDropdown">
-                <label class="input-label mb-2">快速選擇模板</label>
+                <label class="input-label mb-2">選擇模板</label>
                 <!-- 點擊觸發選單展開，並防止事件冒泡 -->
                 <div class="flex items-center bg-slate-100 rounded-2xl px-4 py-4 cursor-pointer" onclick="event.stopPropagation(); app.toggleTemplateDropdown()">
-                    <span id="currentTemplateLabel" class="flex-1 font-bold text-slate-600 text-sm">-- 選擇現有模板 --</span>
+                    <span id="currentTemplateLabel" class="flex-1 font-bold text-slate-600 text-sm">當前模板</span>
                     <i data-lucide="chevron-down" id="templateArrowIcon" size="18" class="text-slate-400 transition-transform duration-300"></i>
                 </div>
                 <!-- 模板清單容器 -->
