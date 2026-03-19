@@ -17,11 +17,8 @@ window.onload = () => {
     }
     historyData = data.history || {};
     commonFoods = data.common || [];
-    customTemplates = data.templates || [
-        { id: 'lose', name: '減脂模板', p: 160, c: 120, f: 50, w: 2500 },
-        { id: 'keep', name: '維持模板', p: 150, c: 200, f: 65, w: 2000 },
-        { id: 'gain', name: '增肌模板', p: 180, c: 320, f: 80, w: 3000 }
-    ];
+    // 修改點：移除預設的三個模板，初始為空陣列
+    customTemplates = data.templates || [];
 
     calendar.init();
     lucide.createIcons();
@@ -68,13 +65,13 @@ window.app = {
         document.getElementById('targetKcalDisplay').innerText = config.kcal;
     },
 
-    // --- 模板功能 (邏輯與常用食物同步) ---
+    // --- 模板功能 ---
 
     toggleTemplateDropdown() {
         const dropdown = document.getElementById('templateDropdown');
         const isActive = dropdown.classList.contains('dropdown-active');
         if (!isActive) {
-            this.renderTemplateDropdown(); // 打開時即時渲染
+            this.renderTemplateDropdown(); 
             dropdown.classList.add('dropdown-active');
         } else {
             dropdown.classList.remove('dropdown-active');
@@ -98,20 +95,17 @@ window.app = {
             </div>
         `;
 
-        // 渲染模板清單
+        // 渲染模板清單（移除 isDefault 判斷，讓所有模板都可以刪除）
         customTemplates.forEach(t => {
-            const isDefault = ['lose', 'keep', 'gain'].includes(t.id);
             html += `
                 <div class="flex items-center justify-between p-4 hover:bg-slate-50 cursor-pointer border-b border-slate-50 last:border-none group">
                     <div onclick="app.selectTemplate('${t.id}')" class="flex-1">
                         <div class="text-sm font-black text-slate-700">${t.name}</div>
                         <div class="text-[10px] text-slate-400 font-bold uppercase tracking-tighter">P:${t.p} | C:${t.c} | F:${t.f} | W:${t.w}</div>
                     </div>
-                    ${!isDefault ? `
-                        <button onclick="app.deleteTemplate('${t.id}', event)" class="p-2 text-slate-300 hover:text-rose-500 transition-all">
-                            <i data-lucide="trash-2" size="14"></i>
-                        </button>
-                    ` : ''}
+                    <button onclick="app.deleteTemplate('${t.id}', event)" class="p-2 text-slate-300 hover:text-rose-500 transition-all">
+                        <i data-lucide="trash-2" size="14"></i>
+                    </button>
                 </div>
             `;
         });
@@ -146,6 +140,11 @@ window.app = {
         storage.save(config, historyData, commonFoods, customTemplates);
         this.renderTemplateDropdown();
         ui.showMessage("模板已刪除");
+        // 如果刪除的是目前選中的模板，重置顯示名稱
+        const label = document.getElementById('currentTemplateLabel');
+        if (label && label.innerText !== '-- 選擇現有模板 --') {
+             label.innerText = '-- 選擇現有模板 --';
+        }
     },
 
     saveNewTemplate() {
@@ -173,7 +172,7 @@ window.app = {
         document.getElementById('tplFat').value = "";
     },
 
-    // --- 其他原有功能 ---
+    // --- 其他功能 ---
 
     showCommon() { document.getElementById('commonFoodDropdown').classList.add('dropdown-active'); ui.filterCommon(); },
     hideCommon() { document.getElementById('commonFoodDropdown').classList.remove('dropdown-active'); },
@@ -333,15 +332,10 @@ window.ui = {
 
     initClickOutside() {
         document.addEventListener('mousedown', (e) => {
-            // 常用食物收合
             const foodDropdown = document.getElementById('commonFoodDropdown');
             if (foodDropdown && !foodDropdown.contains(e.target)) app.hideCommon();
-
-            // 模板選單收合
             const tplDropdown = document.getElementById('templateDropdown');
             if (tplDropdown && !tplDropdown.contains(e.target)) app.hideTemplateDropdown();
-
-            // 日曆收合
             const calendarArea = document.getElementById('calendarWrapper');
             if (calendarArea && !calendarArea.contains(e.target) && window.calendar) window.calendar.close();
         });
