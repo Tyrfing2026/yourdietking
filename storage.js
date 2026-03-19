@@ -3,41 +3,39 @@
  */
 const storage = {
     keys: {
-        config: 'macroTracker_v4_config',
-        history: 'macroTracker_v4_history',
-        common: 'macroTracker_v4_commonFoods'
+        config: 'macroTracker_v5_config',
+        history: 'macroTracker_v5_history',
+        common: 'macroTracker_v5_commonFoods',
+        templates: 'macroTracker_v5_templates'
     },
 
     migrate() {
-        // 檢查是否需要從舊版 v2/v3 遷移
         if (!localStorage.getItem(this.keys.history)) {
-            const oldHistory = localStorage.getItem('macroTracker_v2_history');
+            const oldHistory = localStorage.getItem('macroTracker_v4_history');
             if (oldHistory) {
-                const data = JSON.parse(oldHistory);
-                const newData = {};
-                Object.keys(data).forEach(date => {
-                    newData[date] = { food: data[date], water: [] };
-                });
-                localStorage.setItem(this.keys.history, JSON.stringify(newData));
+                localStorage.setItem(this.keys.history, oldHistory);
+                localStorage.setItem(this.keys.config, localStorage.getItem('macroTracker_v4_config'));
+                localStorage.setItem(this.keys.common, localStorage.getItem('macroTracker_v4_commonFoods'));
             }
         }
     },
 
-    save(config, history, common) {
+    save(config, history, common, templates) {
         localStorage.setItem(this.keys.config, JSON.stringify(config));
         localStorage.setItem(this.keys.history, JSON.stringify(history));
         localStorage.setItem(this.keys.common, JSON.stringify(common));
+        localStorage.setItem(this.keys.templates, JSON.stringify(templates));
     },
 
     load() {
         return {
             config: JSON.parse(localStorage.getItem(this.keys.config)),
             history: JSON.parse(localStorage.getItem(this.keys.history)) || {},
-            common: JSON.parse(localStorage.getItem(this.keys.common)) || []
+            common: JSON.parse(localStorage.getItem(this.keys.common)) || [],
+            templates: JSON.parse(localStorage.getItem(this.keys.templates)) || null
         };
     },
 
-    // 核心修復：正確下載 JSON 檔案
     export() {
         const data = this.load();
         const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
@@ -47,7 +45,7 @@ const storage = {
         
         a.href = url;
         a.download = `飲控助手備份_${dateStr}.json`;
-        document.body.appendChild(a); // 必須附加到 DOM
+        document.body.appendChild(a);
         a.click();
         document.body.removeChild(a);
         URL.revokeObjectURL(url);
@@ -55,7 +53,6 @@ const storage = {
         if (window.ui) ui.showMessage("備份下載中...");
     },
 
-    // 核心修復：正確讀取與儲存
     import(event) {
         const file = event.target.files[0];
         if (!file) return;
@@ -64,11 +61,11 @@ const storage = {
         reader.onload = (e) => {
             try {
                 const data = JSON.parse(e.target.result);
-                // 驗證必要欄位
                 if (data.config && data.history) {
                     localStorage.setItem(this.keys.config, JSON.stringify(data.config));
                     localStorage.setItem(this.keys.history, JSON.stringify(data.history));
                     localStorage.setItem(this.keys.common, JSON.stringify(data.common || []));
+                    if (data.templates) localStorage.setItem(this.keys.templates, JSON.stringify(data.templates));
                     
                     if (window.ui) ui.showMessage("匯入成功！即將重新整理");
                     setTimeout(() => location.reload(), 1000);
