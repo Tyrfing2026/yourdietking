@@ -282,34 +282,44 @@ window.ui = {
         list.innerHTML = all.map(e => {
             if (e.type === 'food') {
                 const isCommon = commonFoods.some(cf => cf.name === e.name);
-                // 修改邏輯：移除 !== 1 的判斷，讓份數標記始終顯示（若無份數資料則預設顯示 1）
-                const servingText = `<span class="text-[#9E9796] text-xs font-black ml-1 tabular-nums">×${e.srv || 1}</span>`;
+                // 修改邏輯：份數標記文字改為細體，並確保始終顯示
+                const servingText = `<span class="text-[#9E9796] text-[10px] font-normal ml-1 tabular-nums">×${e.srv || 1}</span>`;
                 
                 return `
-                    <div class="glass-card p-4 rounded-3xl flex items-center justify-between animate-fadeIn gap-3">
-                        <div class="flex items-center gap-4 cursor-pointer overflow-hidden flex-1" onclick="app.editFoodEntry(${e.id})">
-                            <div class="w-10 h-10 bg-blue-50 rounded-2xl flex-shrink-0 flex items-center justify-center text-blue-500"><i data-lucide="utensils" size="18"></i></div>
+                    <div class="glass-card p-4 rounded-3xl flex items-center justify-between animate-fadeIn gap-2">
+                        <div class="flex items-center gap-3 cursor-pointer overflow-hidden flex-1" onclick="app.editFoodEntry(${e.id})">
+                            <div class="w-9 h-9 bg-blue-50 rounded-2xl flex-shrink-0 flex items-center justify-center text-blue-500"><i data-lucide="utensils" size="16"></i></div>
                             <div class="overflow-hidden">
-                                <div class="flex items-center gap-2">
-                                    <span class="font-bold text-sm text-slate-800 truncate max-w-[120px] sm:max-w-[200px] inline-block">${e.name}</span>
+                                <div class="flex items-center gap-1">
+                                    <span class="font-bold text-sm text-slate-800 truncate max-w-[100px] sm:max-w-[180px] inline-block">${e.name}</span>
                                     ${servingText}
                                     <span class="text-[9px] text-slate-300 font-bold tabular-nums ml-auto">${e.time}</span>
                                 </div>
                                 <div class="text-[9px] font-bold text-slate-400 tabular-nums uppercase tracking-tighter">P ${e.p.toFixed(1)} | C ${e.c.toFixed(1)} | F ${e.f.toFixed(1)}</div>
                             </div>
                         </div>
-                        <div class="flex items-center gap-1 flex-shrink-0">
-                            <div class="text-right mr-2"><span class="text-sm font-black text-slate-700 tabular-nums">${e.kcal}</span><span class="text-[8px] font-bold text-slate-300 block leading-none">kcal</span></div>
-                            <button onclick="app.toggleCommonFromHistory(${e.id})" class="${isCommon ? 'text-amber-400' : 'text-slate-200'} p-2"><i data-lucide="star" ${isCommon ? 'fill="currentColor"' : ''} size="16"></i></button>
-                            <button onclick="app.deleteEntry('food', ${e.id})" class="text-slate-200 hover:text-rose-500 p-2"><i data-lucide="x" size="16"></i></button>
+                        <div class="flex items-center gap-0.5 flex-shrink-0">
+                            <div class="text-right mr-1.5"><span class="text-sm font-black text-slate-700 tabular-nums">${e.kcal}</span><span class="text-[8px] font-bold text-slate-300 block leading-none">kcal</span></div>
+                            <!-- 修改點：縮小星號與刪除按鈕，並減少內邊距 -->
+                            <button onclick="app.toggleCommonFromHistory(${e.id})" class="${isCommon ? 'text-amber-400' : 'text-slate-200'} p-1"><i data-lucide="star" ${isCommon ? 'fill="currentColor"' : ''} size="14"></i></button>
+                            <button onclick="app.deleteEntry('food', ${e.id})" class="text-slate-200 hover:text-rose-500 p-1"><i data-lucide="x" size="14"></i></button>
                         </div>
                     </div>`;
             } else {
-                return `<div class="glass-card p-4 rounded-3xl flex items-center justify-between animate-fadeIn gap-3">
-                        <div class="flex items-center gap-4 overflow-hidden flex-1"><div class="w-10 h-10 bg-sky-50 rounded-2xl flex-shrink-0 flex items-center justify-center text-sky-500"><i data-lucide="droplets" size="18"></i></div>
-                        <div class="overflow-hidden"><div class="flex items-center gap-2"><span class="font-bold text-sm text-slate-800">水分補充</span><span class="text-[9px] text-slate-300 font-bold tabular-nums ml-auto">${e.time}</span></div>
-                        <div class="text-[9px] font-bold text-sky-400 tabular-nums">💧 ${e.amount} ml</div></div></div>
-                        <button onclick="app.deleteEntry('water', ${e.id})" class="text-slate-200 hover:text-rose-500 p-2 flex-shrink-0"><i data-lucide="x" size="16"></i></button></div>`;
+                return `<div class="glass-card p-4 rounded-3xl flex items-center justify-between animate-fadeIn gap-2">
+                        <div class="flex items-center gap-3 overflow-hidden flex-1">
+                            <div class="w-9 h-9 bg-sky-50 rounded-2xl flex-shrink-0 flex items-center justify-center text-sky-500"><i data-lucide="droplets" size="16"></i></div>
+                            <div class="overflow-hidden">
+                                <div class="flex items-center gap-1">
+                                    <span class="font-bold text-sm text-slate-800">水分補充</span>
+                                    <span class="text-[9px] text-slate-300 font-bold tabular-nums ml-auto">${e.time}</span>
+                                </div>
+                                <div class="text-[9px] font-bold text-sky-400 tabular-nums">💧 ${e.amount} ml</div>
+                            </div>
+                        </div>
+                        <!-- 修改點：縮小刪除按鈕 -->
+                        <button onclick="app.deleteEntry('water', ${e.id})" class="text-slate-200 hover:text-rose-500 p-1 flex-shrink-0"><i data-lucide="x" size="14"></i></button>
+                    </div>`;
             }
         }).join('');
         lucide.createIcons();
