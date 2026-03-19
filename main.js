@@ -279,7 +279,7 @@ window.ui = {
             if (e.type === 'food') {
                 const isCommon = commonFoods.some(cf => cf.name === e.name);
                 // 修改點：份數標記改為灰色 (text-slate-400) 與細體 (font-normal)
-                const servingText = (e.srv && e.srv !== 1) ? `<span class="text-[#CFC3C2] text-xs font-normal ml-1 tabular-nums">×${e.srv}</span>` : '';
+                const servingText = (e.srv && e.srv !== 1) ? `<span class="text-[#9E9796] text-xs font-black ml-1 tabular-nums">×${e.srv}</span>` : '';
                 
                 return `
                     <div class="glass-card p-4 rounded-3xl flex items-center justify-between animate-fadeIn gap-3">
