@@ -26,12 +26,10 @@ window.onload = () => {
     calendar.init();
     lucide.createIcons();
     app.updateUI(); 
-    app.renderTemplateDropdown(); // 初始化模板選單
     ui.initClickOutside();
 };
 
 window.app = {
-    // UI 渲染
     updateUI() {
         const date = calendar.selectedDate;
         const data = historyData[date] || { food: [], water: [] };
@@ -70,13 +68,29 @@ window.app = {
         document.getElementById('targetKcalDisplay').innerText = config.kcal;
     },
 
-    // --- 模板功能 (更新為自定義下拉選單) ---
+    // --- 模板功能 (邏輯與常用食物同步) ---
+
+    toggleTemplateDropdown() {
+        const dropdown = document.getElementById('templateDropdown');
+        const isActive = dropdown.classList.contains('dropdown-active');
+        if (!isActive) {
+            this.renderTemplateDropdown(); // 打開時即時渲染
+            dropdown.classList.add('dropdown-active');
+        } else {
+            dropdown.classList.remove('dropdown-active');
+        }
+    },
+
+    hideTemplateDropdown() {
+        const dropdown = document.getElementById('templateDropdown');
+        if (dropdown) dropdown.classList.remove('dropdown-active');
+    },
 
     renderTemplateDropdown() {
         const list = document.getElementById('templateDropdownList');
         if (!list) return;
 
-        // 第一個項目：新增模板
+        // 首位：新增模板項目
         let html = `
             <div class="p-4 hover:bg-emerald-50 cursor-pointer border-b border-slate-50 flex items-center gap-2 text-emerald-600 font-black text-sm" 
                  onclick="app.openNewTemplateModal()">
@@ -84,7 +98,7 @@ window.app = {
             </div>
         `;
 
-        // 渲染現有模板
+        // 渲染模板清單
         customTemplates.forEach(t => {
             const isDefault = ['lose', 'keep', 'gain'].includes(t.id);
             html += `
@@ -104,17 +118,6 @@ window.app = {
 
         list.innerHTML = html;
         lucide.createIcons();
-    },
-
-    toggleTemplateDropdown(e) {
-        if (e) e.stopPropagation();
-        const dropdown = document.getElementById('templateDropdown');
-        dropdown.classList.toggle('dropdown-active');
-    },
-
-    hideTemplateDropdown() {
-        const dropdown = document.getElementById('templateDropdown');
-        if (dropdown) dropdown.classList.remove('dropdown-active');
     },
 
     openNewTemplateModal() {
@@ -159,48 +162,23 @@ window.app = {
         
         storage.save(config, historyData, commonFoods, customTemplates);
         this.renderTemplateDropdown();
-        
-        // 自動套用
         this.selectTemplate(newId);
 
         ui.closeModal('newTemplateModal');
         ui.openModal('goalModal');
         
-        // 清空
         document.getElementById('tplName').value = "";
         document.getElementById('tplProtein').value = "";
         document.getElementById('tplCarbs').value = "";
         document.getElementById('tplFat').value = "";
     },
 
-    // --- 飲食記錄 ---
+    // --- 其他原有功能 ---
 
-    editFoodEntry(id) {
-        const entry = historyData[calendar.selectedDate]?.food.find(e => e.id === id);
-        if (!entry) return;
-        editingEntryId = id;
-        document.getElementById('editItemName').value = entry.name;
-        document.getElementById('editProtein').value = entry.p.toFixed(1);
-        document.getElementById('editCarbs').value = entry.c.toFixed(1);
-        document.getElementById('editFat').value = entry.f.toFixed(1);
-        ui.openModal('editFoodModal');
-    },
-
-    saveFoodEdit() {
-        const name = document.getElementById('editItemName').value;
-        const p = parseFloat(document.getElementById('editProtein').value) || 0;
-        const c = parseFloat(document.getElementById('editCarbs').value) || 0;
-        const f = parseFloat(document.getElementById('editFat').value) || 0;
-        const entry = historyData[calendar.selectedDate].food.find(e => e.id === editingEntryId);
-        if (entry) {
-            entry.name = name; entry.p = p; entry.c = c; entry.f = f;
-            entry.kcal = Math.round((p * 4) + (c * 4) + (f * 9));
-            entry.rawP = p; entry.rawC = c; entry.rawF = f; entry.srv = 1;
-            storage.save(config, historyData, commonFoods, customTemplates);
-            this.updateUI(); ui.closeModal('editFoodModal'); ui.showMessage("已更新紀錄");
-        }
-    },
-
+    showCommon() { document.getElementById('commonFoodDropdown').classList.add('dropdown-active'); ui.filterCommon(); },
+    hideCommon() { document.getElementById('commonFoodDropdown').classList.remove('dropdown-active'); },
+    toggleCommon(e) { if (e) e.stopPropagation(); const d = document.getElementById('commonFoodDropdown'); d.classList.contains('dropdown-active') ? this.hideCommon() : this.showCommon(); },
+    
     addFood() {
         const name = document.getElementById('itemName').value || "未命名餐點";
         const srv = parseFloat(document.getElementById('inputServings').value) || 1;
@@ -240,9 +218,6 @@ window.app = {
         this.updateUI();
     },
 
-    showCommon() { document.getElementById('commonFoodDropdown').classList.add('dropdown-active'); ui.filterCommon(); },
-    hideCommon() { document.getElementById('commonFoodDropdown').classList.remove('dropdown-active'); },
-    toggleCommon(e) { if (e) e.stopPropagation(); const d = document.getElementById('commonFoodDropdown'); d.classList.contains('dropdown-active') ? this.hideCommon() : this.showCommon(); },
     toggleCommonFromHistory(id) {
         const entry = historyData[calendar.selectedDate]?.food.find(e => e.id === id);
         if (!entry) return;
@@ -253,6 +228,32 @@ window.app = {
         ui.filterCommon(); this.updateUI(); 
     },
     deleteCommon(id, e) { if (e) e.stopPropagation(); commonFoods = commonFoods.filter(f => f.id !== id); storage.save(config, historyData, commonFoods, customTemplates); ui.filterCommon(); this.updateUI(); },
+
+    editFoodEntry(id) {
+        const entry = historyData[calendar.selectedDate]?.food.find(e => e.id === id);
+        if (!entry) return;
+        editingEntryId = id;
+        document.getElementById('editItemName').value = entry.name;
+        document.getElementById('editProtein').value = entry.p.toFixed(1);
+        document.getElementById('editCarbs').value = entry.c.toFixed(1);
+        document.getElementById('editFat').value = entry.f.toFixed(1);
+        ui.openModal('editFoodModal');
+    },
+
+    saveFoodEdit() {
+        const name = document.getElementById('editItemName').value;
+        const p = parseFloat(document.getElementById('editProtein').value) || 0;
+        const c = parseFloat(document.getElementById('editCarbs').value) || 0;
+        const f = parseFloat(document.getElementById('editFat').value) || 0;
+        const entry = historyData[calendar.selectedDate].food.find(e => e.id === editingEntryId);
+        if (entry) {
+            entry.name = name; entry.p = p; entry.c = c; entry.f = f;
+            entry.kcal = Math.round((p * 4) + (c * 4) + (f * 9));
+            entry.rawP = p; entry.rawC = c; entry.rawF = f; entry.srv = 1;
+            storage.save(config, historyData, commonFoods, customTemplates);
+            this.updateUI(); ui.closeModal('editFoodModal'); ui.showMessage("已更新紀錄");
+        }
+    },
 
     quickWater(ml) { document.getElementById('waterInput').value = ml; },
     addWater() {
@@ -278,7 +279,7 @@ window.ui = {
     renderList(food, water) {
         const list = document.getElementById('historyList');
         const all = [...food.map(e=>({...e, sort: e.id})), ...water.map(e=>({...e, sort: e.id}))].sort((a,b)=>b.sort - a.sort);
-        if (all.length === 0) { list.innerHTML = `<div class="text-center py-12 glass-card rounded-[2.5rem] opacity-30 text-xs font-bold">尚無本日紀錄</div>`; return; }
+        if (all.length === 0) { list.innerHTML = `<div class="text-center py-12 glass-card rounded-[2.5rem] opacity-30 text-xs font-bold font-['Noto_Sans_TC']">尚無本日紀錄</div>`; return; }
         list.innerHTML = all.map(e => {
             if (e.type === 'food') {
                 const isCommon = commonFoods.some(cf => cf.name === e.name);
@@ -330,19 +331,17 @@ window.ui = {
         if (x) { document.getElementById('itemName').value = x.name; document.getElementById('inputProtein').value = x.p; document.getElementById('inputCarbs').value = x.c; document.getElementById('inputFat').value = x.f; document.getElementById('inputServings').value = 1; app.hideCommon(); }
     },
 
-    showMessage(t, type) { const b = document.getElementById('msgBox'); if (!b) return; b.innerText = t; b.className = `fixed bottom-24 left-1/2 -translate-x-1/2 px-10 py-4 rounded-2xl shadow-2xl transition-all z-[7000] text-xs font-black uppercase tracking-widest ${type==='error'?'bg-rose-600':'bg-slate-900/95 backdrop-blur'} text-white opacity-100`; setTimeout(() => b.style.opacity = '0', 2500); },
-
     initClickOutside() {
         document.addEventListener('mousedown', (e) => {
-            // 常用食物選單點擊外部收合
+            // 常用食物收合
             const foodDropdown = document.getElementById('commonFoodDropdown');
             if (foodDropdown && !foodDropdown.contains(e.target)) app.hideCommon();
 
-            // 營養模板選單點擊外部收合
+            // 模板選單收合
             const tplDropdown = document.getElementById('templateDropdown');
             if (tplDropdown && !tplDropdown.contains(e.target)) app.hideTemplateDropdown();
 
-            // 日曆點擊外部收合
+            // 日曆收合
             const calendarArea = document.getElementById('calendarWrapper');
             if (calendarArea && !calendarArea.contains(e.target) && window.calendar) window.calendar.close();
         });
