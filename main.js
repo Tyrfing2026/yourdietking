@@ -7,17 +7,20 @@ let historyData = {};
 let commonFoods = [];
 
 window.onload = () => {
-    storage.migrate();
-    const data = storage.load();
-    if (data.config) {
-        config = data.config;
-        ui.syncGoalInputs();
+    if (typeof storage !== 'undefined') {
+        storage.migrate();
+        const data = storage.load();
+        if (data.config) {
+            config = data.config;
+            ui.syncGoalInputs();
+        }
+        historyData = data.history || {};
+        commonFoods = data.common || [];
     }
-    historyData = data.history || {};
-    commonFoods = data.common || [];
 
-    calendar.init();
-    lucide.createIcons();
+    if (typeof calendar !== 'undefined') calendar.init();
+    if (typeof lucide !== 'undefined') lucide.createIcons();
+    
     app.updateUI(); 
     ui.initClickOutside();
 };
@@ -63,7 +66,7 @@ window.app = {
         document.getElementById('targetKcalDisplay').innerText = config.kcal;
     },
 
-    // 常用食物開關控制
+    // 常用食物選單控制
     showCommon() {
         const dropdown = document.getElementById('commonFoodDropdown');
         if (dropdown) {
@@ -79,7 +82,7 @@ window.app = {
         }
     },
 
-    // 切換選單狀態 (點擊按鈕用)
+    // 切換選單狀態 (點擊箭頭按鈕用)
     toggleCommon(e) {
         if (e) e.stopPropagation();
         const dropdown = document.getElementById('commonFoodDropdown');
@@ -93,6 +96,7 @@ window.app = {
         }
     },
 
+    // 智慧星號功能 (雙向切換) - 修改重點：僅儲存單份營養素
     toggleCommonFromHistory(id) {
         const date = calendar.selectedDate;
         const entry = historyData[date]?.food.find(e => e.id === id);
@@ -100,33 +104,46 @@ window.app = {
 
         const commonIndex = commonFoods.findIndex(f => f.name === entry.name);
         if (commonIndex > -1) {
+            // 已存在於常用清單 -> 移除
             commonFoods.splice(commonIndex, 1);
             ui.showMessage(`已從常用清單移除`);
         } else {
-            commonFoods.push({ id: Date.now(), name: entry.name, p: entry.p, c: entry.c, f: entry.f });
-            ui.showMessage(`"${entry.name}" 已設為常用`);
+            // 不存在 -> 存入單份營養素
+            commonFoods.push({ 
+                id: Date.now(), 
+                name: entry.name, 
+                p: entry.rawP, // 存入記錄時保留的單份數據
+                c: entry.rawC, 
+                f: entry.rawF 
+            });
+            ui.showMessage(`"${entry.name}" (單份) 已存為常用食物`);
         }
         storage.save(config, historyData, commonFoods);
         ui.filterCommon();
         this.updateUI(); 
     },
 
+    // 新增飲食紀錄 - 修改重點：額外保留單份數據
     addFood() {
         const name = document.getElementById('itemName').value || "未命名餐點";
         const srv = parseFloat(document.getElementById('inputServings').value) || 1;
-        const p = parseFloat(document.getElementById('inputProtein').value) || 0;
-        const c = parseFloat(document.getElementById('inputCarbs').value) || 0;
-        const f = parseFloat(document.getElementById('inputFat').value) || 0;
+        const p_per = parseFloat(document.getElementById('inputProtein').value) || 0;
+        const c_per = parseFloat(document.getElementById('inputCarbs').value) || 0;
+        const f_per = parseFloat(document.getElementById('inputFat').value) || 0;
 
-        if (p === 0 && c === 0 && f === 0) return ui.showMessage("請輸入數值", "error");
+        if (p_per === 0 && c_per === 0 && f_per === 0) return ui.showMessage("請輸入數值", "error");
 
-        const finalP = p * srv;
-        const finalC = c * srv;
-        const finalF = f * srv;
-        
         const entry = {
-            id: Date.now(), type: 'food', name, p: finalP, c: finalC, f: finalF, 
-            kcal: Math.round((finalP * 4) + (finalC * 4) + (finalF * 9)),
+            id: Date.now(),
+            type: 'food',
+            name, 
+            p: p_per * srv,       // 當日總攝取量 (顯示於明細)
+            c: c_per * srv, 
+            f: f_per * srv, 
+            rawP: p_per,          // 保留單份蛋白質 (存常用時使用)
+            rawC: c_per,          // 保留單份碳水
+            rawF: f_per,          // 保留單份脂肪
+            kcal: Math.round(((p_per * srv) * 4) + ((c_per * srv) * 4) + ((f_per * srv) * 9)),
             time: this.getTaipeiTime()
         };
 
@@ -186,8 +203,14 @@ window.app = {
 };
 
 window.ui = {
-    openModal(id) { document.getElementById(id).classList.add('active'); document.body.classList.add('no-scroll'); },
-    closeModal(id) { document.getElementById(id).classList.remove('active'); document.body.classList.remove('no-scroll'); },
+    openModal(id) { 
+        document.getElementById(id).classList.add('active'); 
+        document.body.classList.add('no-scroll'); 
+    },
+    closeModal(id) { 
+        document.getElementById(id).classList.remove('active'); 
+        document.body.classList.remove('no-scroll'); 
+    },
     
     syncGoalInputs() {
         document.getElementById('targetProtein').value = config.protein;
@@ -301,7 +324,6 @@ window.ui = {
     initClickOutside() {
         document.addEventListener('mousedown', (e) => {
             const dropdownArea = document.getElementById('commonFoodDropdown');
-            // 只有點擊範圍完全在 dropdown 之外時才關閉
             if (dropdownArea && !dropdownArea.contains(e.target)) {
                 app.hideCommon();
             }
