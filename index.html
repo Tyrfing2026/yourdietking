@@ -132,7 +132,7 @@
                 <button onclick="calendar.goToToday()" class="text-xs font-black text-emerald-600 hover:bg-emerald-50 px-5 py-2.5 rounded-xl transition-all tracking-wide">回到今天</button>
             </div>
 
-            <!-- 備份區塊 (修正點擊反應) -->
+            <!-- 備份區塊 -->
             <div class="flex items-center justify-center gap-4 text-slate-400">
                 <button onclick="storage.export()" class="flex items-center gap-2 text-[10px] hover:text-emerald-600 transition-colors uppercase font-black tracking-widest">
                     <i data-lucide="download" size="14"></i> 匯出備份
@@ -146,7 +146,7 @@
         </footer>
     </div>
 
-    <!-- MODAL: 設定目標 (新增營養素模板) -->
+    <!-- MODAL: 設定目標 (更新下拉選單邏輯) -->
     <div id="goalModal" class="modal-overlay">
         <div class="glass-card w-full max-w-sm rounded-[2.5rem] p-8 animate-modalIn shadow-2xl">
             <div class="flex justify-between items-center mb-6">
@@ -154,13 +154,16 @@
                 <button onclick="ui.closeModal('goalModal')" class="text-slate-300 hover:text-slate-600 transition-colors"><i data-lucide="x"></i></button>
             </div>
             
-            <!-- 新增：模板快速切換 -->
-            <div class="mb-6">
-                <label class="input-label mb-2">快速選擇模板</label>
-                <div class="grid grid-cols-3 gap-2">
-                    <button onclick="app.applyTemplate('lose')" class="template-btn">減脂</button>
-                    <button onclick="app.applyTemplate('keep')" class="template-btn active">維持</button>
-                    <button onclick="app.applyTemplate('gain')" class="template-btn">增肌</button>
+            <!-- 更新：下拉選單選擇模板 -->
+            <div class="mb-8">
+                <label class="input-label mb-2">選擇營養模板</label>
+                <div class="relative">
+                    <select id="templateSelect" onchange="app.handleTemplateChange(this.value)" class="w-full p-4 rounded-2xl bg-slate-100 border-none outline-none font-bold text-slate-700 appearance-none cursor-pointer">
+                        <!-- JS 動態渲染模板選項 -->
+                    </select>
+                    <div class="absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none text-slate-400">
+                        <i data-lucide="chevron-down" size="18"></i>
+                    </div>
                 </div>
             </div>
 
@@ -174,11 +177,31 @@
         </div>
     </div>
 
+    <!-- 新增：MODAL: 新增模板視窗 -->
+    <div id="newTemplateModal" class="modal-overlay">
+        <div class="glass-card w-full max-w-sm rounded-[2.5rem] p-8 animate-modalIn shadow-2xl">
+            <div class="flex justify-between items-center mb-8">
+                <h2 class="text-xl font-black text-slate-800 tracking-tight">建立新模板</h2>
+                <button onclick="ui.closeModal('newTemplateModal'); ui.openModal('goalModal');"><i data-lucide="arrow-left" class="text-slate-400"></i></button>
+            </div>
+            <div class="space-y-5">
+                <div><label class="input-label">模板名稱</label><input type="text" id="tplName" placeholder="例如：增肌期" class="modal-input"></div>
+                <div class="grid grid-cols-3 gap-3">
+                    <div><label class="input-label text-blue-400">蛋白質</label><input type="number" id="tplProtein" placeholder="0" class="modal-input"></div>
+                    <div><label class="input-label text-amber-400">碳水</label><input type="number" id="tplCarbs" placeholder="0" class="modal-input"></div>
+                    <div><label class="input-label text-rose-400">脂肪</label><input type="number" id="tplFat" placeholder="0" class="modal-input"></div>
+                </div>
+                <div><label class="input-label text-sky-500">飲水目標 (ml)</label><input type="number" id="tplWater" placeholder="2000" class="modal-input"></div>
+            </div>
+            <button onclick="app.saveNewTemplate()" class="w-full mt-10 bg-emerald-600 text-white font-black py-4 rounded-2xl shadow-xl hover:bg-emerald-700 transition-all tracking-wide">儲存模板</button>
+        </div>
+    </div>
+
     <!-- MODAL: 新增飲食 -->
     <div id="foodModal" class="modal-overlay">
         <div class="glass-card w-full max-w-md rounded-[2.5rem] p-8 animate-modalIn relative shadow-2xl">
             <div class="flex justify-between items-center mb-6">
-                <h2 class="text-xl font-black text-slate-800 tracking-tight">新增飲食紀錄</h2>
+                <h2 class="text-xl font-black text-slate-800 tracking-tight">新增飲食</h2>
                 <button onclick="ui.closeModal('foodModal')" class="text-slate-300 hover:text-slate-600 transition-colors"><i data-lucide="x"></i></button>
             </div>
             
@@ -219,15 +242,15 @@
                     <div><label class="input-label text-rose-400">脂肪/份</label><input type="number" id="inputFat" placeholder="0" class="modal-input tabular-nums"></div>
                 </div>
             </div>
-            <button onclick="app.addFood()" class="w-full mt-8 bg-slate-800 text-white font-black py-4 rounded-2xl shadow-xl hover:bg-slate-700 transition-all tracking-wide">新增此餐</button>
+            <button onclick="app.addFood()" class="w-full mt-8 bg-slate-800 text-white font-black py-4 rounded-2xl shadow-xl hover:bg-slate-700 transition-all tracking-wide">確認新增</button>
         </div>
     </div>
 
-    <!-- 新增：MODAL: 修改飲食紀錄 -->
+    <!-- MODAL: 修改飲食紀錄 -->
     <div id="editFoodModal" class="modal-overlay">
         <div class="glass-card w-full max-w-md rounded-[2.5rem] p-8 animate-modalIn relative shadow-2xl">
             <div class="flex justify-between items-center mb-6">
-                <h2 class="text-xl font-black text-slate-800 tracking-tight">修改飲食數據</h2>
+                <h2 class="text-xl font-black text-slate-800 tracking-tight">修改數據</h2>
                 <button onclick="ui.closeModal('editFoodModal')" class="text-slate-300 hover:text-slate-600 transition-colors"><i data-lucide="x"></i></button>
             </div>
             <div class="space-y-5">
@@ -241,7 +264,7 @@
                     <div><label class="input-label text-rose-400">脂肪 (g)</label><input type="number" id="editFat" class="modal-input tabular-nums"></div>
                 </div>
             </div>
-            <button onclick="app.saveFoodEdit()" class="w-full mt-8 bg-emerald-600 text-white font-black py-4 rounded-2xl shadow-xl hover:bg-emerald-700 transition-all tracking-wide">確認修改</button>
+            <button onclick="app.saveFoodEdit()" class="w-full mt-8 bg-emerald-600 text-white font-black py-4 rounded-2xl shadow-xl tracking-wide">確認修改</button>
         </div>
     </div>
 
@@ -262,7 +285,7 @@
                     <button onclick="app.quickWater(500)" class="water-quick-btn">500<span class="text-[10px] block font-bold">ml</span></button>
                     <button onclick="app.quickWater(800)" class="water-quick-btn">800<span class="text-[10px] block font-bold">ml</span></button>
                 </div>
-                <button onclick="app.addWater()" class="w-full bg-sky-500 text-white font-black py-4 rounded-2xl shadow-xl hover:bg-sky-600 transition-all tracking-wide">確認新增</button>
+                <button onclick="app.addWater()" class="w-full bg-sky-500 text-white font-black py-4 rounded-2xl shadow-xl tracking-wide">確認新增</button>
             </div>
         </div>
     </div>
