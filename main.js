@@ -114,7 +114,7 @@ window.app = {
         this.renderTemplateDropdown();
         ui.showMessage("模板已刪除");
         const label = document.getElementById('currentTemplateLabel');
-        if (label && label.innerText !== '當前模板') label.innerText = '當前模板';
+        if (label && label.innerText !== '-- 選擇現有模板 --') label.innerText = '-- 選擇現有模板 --';
     },
 
     saveNewTemplate() {
@@ -263,7 +263,7 @@ window.ui = {
             if (e.type === 'food') {
                 // 判斷是否為常用食物，決定星號樣式
                 const isCommon = commonFoods.some(cf => cf.name === e.name);
-                const servingText = `<span class="text-[#9E9796] text-[10px] font-normal ml-1 tabular-nums">×${e.srv || 1}</span>`;
+                const servingText = `<span class="text-[#9E9796] text-[10px] font-bold ml-1 tabular-nums">×${e.srv || 1}</span>`;
                 
                 return `
                     <div class="glass-card p-4 rounded-3xl flex items-center justify-between animate-fadeIn gap-2">
