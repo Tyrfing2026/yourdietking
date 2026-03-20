@@ -157,7 +157,7 @@
             <div class="mb-8 relative" id="templateDropdown">
                 <label class="input-label mb-2">選擇模板</label>
                 <div class="flex items-center bg-slate-100 rounded-2xl px-4 py-4 cursor-pointer" onclick="event.stopPropagation(); app.toggleTemplateDropdown()">
-                    <span id="currentTemplateLabel" class="flex-1 font-bold text-slate-600 text-sm">-- 選擇現有模板 --</span>
+                    <span id="currentTemplateLabel" class="flex-1 font-bold text-slate-600 text-sm">-- 選擇模板 --</span>
                     <i data-lucide="chevron-down" id="templateArrowIcon" size="18" class="text-slate-400 transition-transform duration-300"></i>
                 </div>
                 <div id="templateDropdownList" onmousedown="event.stopPropagation()" class="dropdown-content custom-scrollbar glass-card mt-2"></div>
@@ -181,7 +181,7 @@
                 <button onclick="ui.closeModal('newTemplateModal'); ui.openModal('goalModal');"><i data-lucide="arrow-left" class="text-slate-400"></i></button>
             </div>
             <div class="space-y-5">
-                <div><label class="input-label">模板名稱</label><input type="text" id="tplName" placeholder="例如：增肌期" class="modal-input"></div>
+                <div><label class="input-label">模板名稱</label><input type="text" id="tplName" placeholder="例如：增肌計畫" class="modal-input"></div>
                 <div class="grid grid-cols-3 gap-3">
                     <div><label class="input-label text-blue-400">蛋白質</label><input type="number" id="tplProtein" placeholder="0" class="modal-input"></div>
                     <div><label class="input-label text-amber-400">碳水</label><input type="number" id="tplCarbs" placeholder="0" class="modal-input"></div>
@@ -189,7 +189,7 @@
                 </div>
                 <div><label class="input-label text-sky-500">飲水目標 (ml)</label><input type="number" id="tplWater" placeholder="2000" class="modal-input"></div>
             </div>
-            <button onclick="app.saveNewTemplate()" class="w-full mt-10 bg-emerald-600 text-white font-black py-4 rounded-2xl shadow-xl tracking-wide">儲存模板</button>
+            <button onclick="app.saveNewTemplate()" class="w-full mt-10 bg-emerald-600 text-white font-black py-4 rounded-2xl shadow-xl tracking-wide">確認儲存模板</button>
         </div>
     </div>
 
@@ -211,7 +211,7 @@
             </div>
 
             <div class="space-y-5">
-                <div><label class="input-label text-slate-400">餐點名稱</label><input type="text" id="itemName" placeholder="例如：水煮雞胸肉" class="modal-input text-lg"></div>
+                <div><label class="input-label text-slate-400">餐點名稱</label><input type="text" id="itemName" placeholder="吃了什麼？" class="modal-input text-lg"></div>
                 <div class="flex gap-4">
                     <div class="flex-1"><label class="input-label text-slate-400">份數</label><input type="number" id="inputServings" value="1" step="0.1" class="modal-input tabular-nums"></div>
                     <div class="flex-1 flex flex-col justify-end pb-1"><span class="text-[10px] text-slate-300 font-bold italic text-right leading-none">* 自動計算總量</span></div>
@@ -226,7 +226,7 @@
         </div>
     </div>
 
-    <!-- MODAL: 修改數據 (已加入份數欄位) -->
+    <!-- MODAL: 修改數據 -->
     <div id="editFoodModal" class="modal-overlay">
         <div class="glass-card w-full max-w-md rounded-[2.5rem] p-8 animate-modalIn relative shadow-2xl">
             <div class="flex justify-between items-center mb-6">
