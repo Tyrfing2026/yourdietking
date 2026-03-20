@@ -136,28 +136,31 @@ window.app = {
     // --- 常用食物功能 ---
     toggleCommonFromHistory(id) {
         const date = calendar.selectedDate;
-        const list = (historyData[date] && historyData[date].food) ? historyData[date].food : [];
-        const entry = list.find(e => e.id == id);
+        const entry = historyData[date]?.food.find(e => e.id == id);
         
         if (!entry) return;
 
-        const commonIndex = commonFoods.findIndex(f => f.name === entry.name);
+        // 強化比對：使用 trim() 避免空白干擾
+        const cleanName = entry.name.trim();
+        const commonIndex = commonFoods.findIndex(f => f.name.trim() === cleanName);
+        
         if (commonIndex > -1) {
             commonFoods.splice(commonIndex, 1);
             ui.showMessage(`已從常用清單移除`);
         } else {
             commonFoods.push({ 
                 id: Date.now(), 
-                name: entry.name, 
+                name: cleanName, 
                 p: entry.rawP !== undefined ? entry.rawP : (entry.p / (entry.srv || 1)), 
                 c: entry.rawC !== undefined ? entry.rawC : (entry.c / (entry.srv || 1)), 
                 f: entry.rawF !== undefined ? entry.rawF : (entry.f / (entry.srv || 1)) 
             });
-            ui.showMessage(`"${entry.name}" 已存為常用`);
+            ui.showMessage(`"${cleanName}" 已存為常用`);
         }
+        
         storage.save(config, historyData, commonFoods, customTemplates);
         ui.filterCommon();
-        this.updateUI(); // 重新渲染列表，讓星號填滿狀態變化
+        this.updateUI(); // 關鍵：觸發重新渲染
     },
 
     // --- 飲食記錄 ---
@@ -261,8 +264,8 @@ window.ui = {
         if (all.length === 0) { list.innerHTML = `<div class="text-center py-12 glass-card rounded-[2.5rem] opacity-30 text-xs font-bold font-['Noto_Sans_TC']">尚無本日紀錄</div>`; return; }
         list.innerHTML = all.map(e => {
             if (e.type === 'food') {
-                // 判斷是否為常用食物，決定星號樣式
-                const isCommon = commonFoods.some(cf => cf.name === e.name);
+                // 強化判斷：名稱比對也加上 trim()
+                const isCommon = commonFoods.some(cf => cf.name.trim() === e.name.trim());
                 const servingText = `<span class="text-[#9E9796] text-[10px] font-bold ml-1 tabular-nums">×${e.srv || 1}</span>`;
                 
                 return `
@@ -280,11 +283,16 @@ window.ui = {
                         </div>
                         <div class="flex items-center gap-0.5 flex-shrink-0">
                             <div class="text-right mr-1.5"><span class="text-sm font-black text-slate-700 tabular-nums">${e.kcal}</span><span class="text-[8px] font-bold text-slate-300 block leading-none">kcal</span></div>
-                            <!-- 星號按鈕：根據 isCommon 切換顏色與填滿 -->
-                            <button onclick="event.stopPropagation(); app.toggleCommonFromHistory(${e.id})" class="${isCommon ? 'text-amber-400' : 'text-slate-200'} p-1">
-                                <i data-lucide="star" ${isCommon ? 'fill="currentColor"' : ''} size="14"></i>
+                            <!-- 星號按鈕：明確控制 fill 屬性與 Tailwind fill-current 類別 -->
+                            <button onclick="event.stopPropagation(); app.toggleCommonFromHistory(${e.id})" 
+                                    class="${isCommon ? 'text-amber-400' : 'text-slate-200'} p-1 transition-colors">
+                                <i data-lucide="star" 
+                                   class="${isCommon ? 'fill-current' : ''}" 
+                                   fill="${isCommon ? 'currentColor' : 'none'}" 
+                                   size="14"></i>
                             </button>
-                            <button onclick="event.stopPropagation(); app.deleteEntry('food', ${e.id})" class="text-slate-200 hover:text-rose-500 p-1">
+                            <button onclick="event.stopPropagation(); app.deleteEntry('food', ${e.id})" 
+                                    class="text-slate-200 hover:text-rose-500 p-1">
                                 <i data-lucide="x" size="14"></i>
                             </button>
                         </div>
@@ -292,7 +300,7 @@ window.ui = {
             } else {
                 return `<div class="glass-card p-4 rounded-3xl flex items-center justify-between animate-fadeIn gap-2">
                         <div class="flex items-center gap-3 overflow-hidden flex-1"><div class="w-9 h-9 bg-sky-50 rounded-2xl flex-shrink-0 flex items-center justify-center text-sky-500"><i data-lucide="droplets" size="16"></i></div>
-                        <div class="overflow-hidden"><div class="flex items-center gap-1"><span class="font-bold text-sm text-slate-800">水分補充</span><span class="text-[9px] text-slate-300 font-bold tabular-nums ml-auto">${e.time}</span></div>
+                        <div class="overflow-hidden"><div class="flex items-center gap-2"><span class="font-bold text-sm text-slate-800">水分補充</span><span class="text-[9px] text-slate-300 font-bold tabular-nums ml-auto">${e.time}</span></div>
                         <div class="text-[9px] font-bold text-sky-400 tabular-nums">💧 ${e.amount} ml</div></div></div>
                         <button onclick="app.deleteEntry('water', ${e.id})" class="text-slate-200 hover:text-rose-500 p-1 flex-shrink-0"><i data-lucide="x" size="14"></i></button></div>`;
             }
