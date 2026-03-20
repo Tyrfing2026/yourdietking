@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>飲控助手</title>
+    <title>飲控助手V3.0</title>
     <link rel="icon" href="favicon.png" type="image/png">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800;900&family=Noto+Sans+TC:wght@400;500;700;900&display=swap" rel="stylesheet">
     <script src="https://cdn.tailwindcss.com"></script>
@@ -17,7 +17,7 @@
             <div>
                 <h1 class="text-2xl font-black flex items-center gap-2 tracking-tight">
                     <i data-lucide="layout-dashboard" class="text-emerald-500"></i>
-                    飲控助手
+                    飲控助手V3.0
                 </h1>
                 <p class="text-slate-400 text-sm font-medium mt-1">
                     <span id="currentDateLabel" class="text-emerald-600 font-bold">今天</span>
@@ -120,7 +120,7 @@
             <div class="mb-8 relative" id="templateDropdown">
                 <label class="input-label mb-2">選擇模板</label>
                 <div class="flex items-center bg-slate-100 rounded-2xl px-4 py-4 cursor-pointer" onclick="event.stopPropagation(); app.toggleTemplateDropdown()">
-                    <span id="currentTemplateLabel" class="flex-1 font-bold text-slate-600 text-sm">-- 選擇模板 --</span>
+                    <span id="currentTemplateLabel" class="flex-1 font-bold text-slate-600 text-sm">當前設定</span>
                     <i data-lucide="chevron-down" id="templateArrowIcon" size="18" class="text-slate-400 transition-transform duration-300"></i>
                 </div>
                 <div id="templateDropdownList" onmousedown="event.stopPropagation()" class="dropdown-content custom-scrollbar glass-card mt-2"></div>
