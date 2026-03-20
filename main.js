@@ -114,7 +114,7 @@ window.app = {
         this.renderTemplateDropdown();
         ui.showMessage("模板已刪除");
         const label = document.getElementById('currentTemplateLabel');
-        if (label && label.innerText !== '-- 選擇現有模板 --') label.innerText = '-- 選擇現有模板 --';
+        if (label && label.innerText !== '當前模板') label.innerText = '當前模板';
     },
 
     saveNewTemplate() {
@@ -133,11 +133,11 @@ window.app = {
         ui.openModal('goalModal');
     },
 
-    // --- 常用食物功能 (關鍵修正：使用 == 比對 ID) ---
+    // --- 常用食物功能 ---
     toggleCommonFromHistory(id) {
         const date = calendar.selectedDate;
         const list = (historyData[date] && historyData[date].food) ? historyData[date].food : [];
-        const entry = list.find(e => e.id == id); // 使用 == 確保數字與字串比對成功
+        const entry = list.find(e => e.id == id);
         
         if (!entry) return;
 
@@ -153,11 +153,11 @@ window.app = {
                 c: entry.rawC !== undefined ? entry.rawC : (entry.c / (entry.srv || 1)), 
                 f: entry.rawF !== undefined ? entry.rawF : (entry.f / (entry.srv || 1)) 
             });
-            ui.showMessage(`"${entry.name}" (單份) 已存為常用`);
+            ui.showMessage(`"${entry.name}" 已存為常用`);
         }
         storage.save(config, historyData, commonFoods, customTemplates);
         ui.filterCommon();
-        this.updateUI(); 
+        this.updateUI(); // 重新渲染列表，讓星號填滿狀態變化
     },
 
     // --- 飲食記錄 ---
@@ -261,8 +261,10 @@ window.ui = {
         if (all.length === 0) { list.innerHTML = `<div class="text-center py-12 glass-card rounded-[2.5rem] opacity-30 text-xs font-bold font-['Noto_Sans_TC']">尚無本日紀錄</div>`; return; }
         list.innerHTML = all.map(e => {
             if (e.type === 'food') {
+                // 判斷是否為常用食物，決定星號樣式
                 const isCommon = commonFoods.some(cf => cf.name === e.name);
                 const servingText = `<span class="text-[#9E9796] text-[10px] font-normal ml-1 tabular-nums">×${e.srv || 1}</span>`;
+                
                 return `
                     <div class="glass-card p-4 rounded-3xl flex items-center justify-between animate-fadeIn gap-2">
                         <div class="flex items-center gap-3 cursor-pointer overflow-hidden flex-1" onclick="app.editFoodEntry(${e.id})">
@@ -278,16 +280,21 @@ window.ui = {
                         </div>
                         <div class="flex items-center gap-0.5 flex-shrink-0">
                             <div class="text-right mr-1.5"><span class="text-sm font-black text-slate-700 tabular-nums">${e.kcal}</span><span class="text-[8px] font-bold text-slate-300 block leading-none">kcal</span></div>
-                            <button onclick="event.stopPropagation(); app.toggleCommonFromHistory(${e.id})" class="${isCommon ? 'text-amber-400' : 'text-slate-200'} p-1"><i data-lucide="star" ${isCommon ? 'fill="currentColor"' : ''} size="14"></i></button>
-                            <button onclick="event.stopPropagation(); app.deleteEntry('food', ${e.id})" class="text-slate-200 hover:text-rose-500 p-1"><i data-lucide="x" size="14"></i></button>
+                            <!-- 星號按鈕：根據 isCommon 切換顏色與填滿 -->
+                            <button onclick="event.stopPropagation(); app.toggleCommonFromHistory(${e.id})" class="${isCommon ? 'text-amber-400' : 'text-slate-200'} p-1">
+                                <i data-lucide="star" ${isCommon ? 'fill="currentColor"' : ''} size="14"></i>
+                            </button>
+                            <button onclick="event.stopPropagation(); app.deleteEntry('food', ${e.id})" class="text-slate-200 hover:text-rose-500 p-1">
+                                <i data-lucide="x" size="14"></i>
+                            </button>
                         </div>
                     </div>`;
             } else {
                 return `<div class="glass-card p-4 rounded-3xl flex items-center justify-between animate-fadeIn gap-2">
                         <div class="flex items-center gap-3 overflow-hidden flex-1"><div class="w-9 h-9 bg-sky-50 rounded-2xl flex-shrink-0 flex items-center justify-center text-sky-500"><i data-lucide="droplets" size="16"></i></div>
-                        <div class="overflow-hidden"><div class="flex items-center gap-2"><span class="font-bold text-sm text-slate-800">水分補充</span><span class="text-[9px] text-slate-300 font-bold tabular-nums ml-auto">${e.time}</span></div>
+                        <div class="overflow-hidden"><div class="flex items-center gap-1"><span class="font-bold text-sm text-slate-800">水分補充</span><span class="text-[9px] text-slate-300 font-bold tabular-nums ml-auto">${e.time}</span></div>
                         <div class="text-[9px] font-bold text-sky-400 tabular-nums">💧 ${e.amount} ml</div></div></div>
-                        <button onclick="event.stopPropagation(); app.deleteEntry('water', ${e.id})" class="text-slate-200 hover:text-rose-500 p-1 flex-shrink-0"><i data-lucide="x" size="14"></i></button></div>`;
+                        <button onclick="app.deleteEntry('water', ${e.id})" class="text-slate-200 hover:text-rose-500 p-1 flex-shrink-0"><i data-lucide="x" size="14"></i></button></div>`;
             }
         }).join('');
         lucide.createIcons();
