@@ -1,24 +1,51 @@
 /**
- * 飲控助手 - 日曆元件 (calendar.js)
+ * 飲控助手 - 日曆邏輯 (calendar.js)
  */
-const calendar = {
-    selectedDate: new Date().toLocaleDateString('en-CA', { timeZone: 'Asia/Taipei' }),
-    viewDate: new Date(),
+
+window.calendar = {
+    selectedDate: '', // 格式: YYYY-MM-DD
+    viewDate: new Date(), // 當前日曆切換到的月份查看點
 
     init() {
-        this.updateDisplay();
-        this.render();
+        // 1. 取得台北時間的今天
+        const now = new Date();
+        this.selectedDate = this.formatDate(now);
+        this.viewDate = new Date(now);
+
+        // 2. 立即更新介面上的文字標籤，防止出現 "--"
+        this.updateDisplayLabel();
+        
+        // 3. 渲染日曆網格
+        this.renderGrid();
+    },
+
+    // 格式化日期為 YYYY-MM-DD
+    formatDate(date) {
+        const y = date.getFullYear();
+        const m = String(date.getMonth() + 1).padStart(2, '0');
+        const d = String(date.getDate()).padStart(2, '0');
+        return `${y}-${m}-${d}`;
+    },
+
+    // 更新底部導航欄的日期文字
+    updateDisplayLabel() {
+        const el = document.getElementById('dateDisplay');
+        const label = document.getElementById('currentDateLabel');
+        
+        if (el) {
+            el.innerText = this.selectedDate;
+        }
+
+        // 更新頂部標題旁的「今天/日期」標籤
+        if (label) {
+            const todayStr = this.formatDate(new Date());
+            label.innerText = (this.selectedDate === todayStr) ? "今天" : this.selectedDate;
+        }
     },
 
     toggle() {
         const modal = document.getElementById('calendarModal');
-        if (!modal) return;
-        if (modal.classList.contains('active')) {
-            this.close();
-        } else {
-            this.render();
-            modal.classList.add('active');
-        }
+        modal.classList.toggle('active');
     },
 
     close() {
@@ -26,86 +53,76 @@ const calendar = {
         if (modal) modal.classList.remove('active');
     },
 
-    changeViewMonth(offset) {
-        this.viewDate.setMonth(this.viewDate.getMonth() + offset);
-        this.render();
-    },
-
-    // 關鍵修復：選取日期後正確觸發 UI 更新
-    selectDate(dateStr) {
-        this.selectedDate = dateStr;
-        this.viewDate = new Date(dateStr);
-        this.updateDisplay();
-        this.close();
-        // 確保主程式知道日期變了
-        if (window.app && typeof window.app.updateUI === 'function') {
-            window.app.updateUI();
-        }
-    },
-
     changeDateRelative(days) {
-        let current = new Date(this.selectedDate);
+        const current = new Date(this.selectedDate);
         current.setDate(current.getDate() + days);
-        this.selectedDate = current.toLocaleDateString('en-CA', { timeZone: 'Asia/Taipei' });
-        this.viewDate = new Date(this.selectedDate);
-        this.updateDisplay();
-        if (window.app) window.app.updateUI();
+        this.selectedDate = this.formatDate(current);
+        this.viewDate = new Date(current);
+        
+        this.updateDisplayLabel();
+        this.renderGrid();
+        
+        // 連動主 App 更新數據
+        if (window.app) app.updateUI();
     },
 
     goToToday() {
-        this.selectedDate = new Date().toLocaleDateString('en-CA', { timeZone: 'Asia/Taipei' });
-        this.viewDate = new Date(this.selectedDate);
-        this.updateDisplay();
-        if (window.app) window.app.updateUI();
-        if (window.ui) window.ui.showMessage("回至今天數據");
+        const now = new Date();
+        this.selectedDate = this.formatDate(now);
+        this.viewDate = new Date(now);
+        
+        this.updateDisplayLabel();
+        this.renderGrid();
+        if (window.app) app.updateUI();
+        this.close();
     },
 
-    updateDisplay() {
-        const today = new Date().toLocaleDateString('en-CA', { timeZone: 'Asia/Taipei' });
-        const display = document.getElementById('dateDisplay');
-        const label = document.getElementById('currentDateLabel');
-        if (display) display.innerText = this.selectedDate;
-        if (label) label.innerText = (this.selectedDate === today) ? "今天" : this.selectedDate;
+    changeViewMonth(offset) {
+        this.viewDate.setMonth(this.viewDate.getMonth() + offset);
+        this.renderGrid();
     },
 
-    render() {
-        const y = this.viewDate.getFullYear();
-        const m = this.viewDate.getMonth();
-        const label = document.getElementById('calendarViewLabel');
-        if (label) label.innerText = `${y}年${String(m + 1).padStart(2, '0')}月`;
-        
-        const firstDay = new Date(y, m, 1).getDay();
-        const daysInMonth = new Date(y, m + 1, 0).getDate();
-        const lastMonthDays = new Date(y, m, 0).getDate();
-        
+    selectDate(dateStr) {
+        this.selectedDate = dateStr;
+        this.updateDisplayLabel();
+        this.renderGrid();
+        if (window.app) app.updateUI();
+        this.close();
+    },
+
+    renderGrid() {
         const grid = document.getElementById('calendarGrid');
-        if (!grid) return;
+        const viewLabel = document.getElementById('calendarViewLabel');
+        if (!grid || !viewLabel) return;
+
         grid.innerHTML = '';
-
-        // 上個月灰色日期
-        for (let i = firstDay - 1; i >= 0; i--) {
-            grid.appendChild(this.createCell(lastMonthDays - i, 'day-other'));
-        }
         
-        // 當月日期
-        for (let i = 1; i <= daysInMonth; i++) {
-            const s = `${y}-${String(m + 1).padStart(2, '0')}-${String(i).padStart(2, '0')}`;
-            const c = this.createCell(i, s === this.selectedDate ? 'day-selected' : '');
-            c.onclick = () => this.selectDate(s);
-            grid.appendChild(c);
-        }
-        
-        // 下個月灰色日期
-        const remaining = (7 - (grid.children.length % 7)) % 7;
-        for (let i = 1; i <= remaining; i++) {
-            grid.appendChild(this.createCell(i, 'day-other'));
-        }
-    },
+        const year = this.viewDate.getFullYear();
+        const month = this.viewDate.getMonth();
+        viewLabel.innerText = `${year}年 ${month + 1}月`;
 
-    createCell(num, className) {
-        const div = document.createElement('div');
-        div.className = `day-cell ${className}`;
-        div.innerText = num;
-        return div;
+        // 計算該月第一天與最後一天
+        const firstDay = new Date(year, month, 1).getDay();
+        const lastDate = new Date(year, month + 1, 0).getDate();
+
+        // 填充上個月的空白
+        for (let i = 0; i < firstDay; i++) {
+            const empty = document.createElement('div');
+            empty.className = 'day-cell day-other opacity-0';
+            grid.appendChild(empty);
+        }
+
+        // 填充本月日期
+        for (let d = 1; d <= lastDate; d++) {
+            const dateObj = new Date(year, month, d);
+            const dateStr = this.formatDate(dateObj);
+            const isSelected = dateStr === this.selectedDate;
+
+            const cell = document.createElement('div');
+            cell.className = `day-cell ${isSelected ? 'day-selected' : ''}`;
+            cell.innerText = d;
+            cell.onclick = () => this.selectDate(dateStr);
+            grid.appendChild(cell);
+        }
     }
 };
