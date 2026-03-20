@@ -133,14 +133,14 @@ window.app = {
         ui.openModal('goalModal');
     },
 
-    // --- 常用食物功能 ---
+    // --- 常用食物功能 (修復重點) ---
     toggleCommonFromHistory(id) {
         const date = calendar.selectedDate;
-        const entry = historyData[date]?.food.find(e => e.id == id);
+        const list = (historyData[date] && historyData[date].food) ? historyData[date].food : [];
+        const entry = list.find(e => e.id == id);
         
         if (!entry) return;
 
-        // 強化比對：使用 trim() 避免空白干擾
         const cleanName = entry.name.trim();
         const commonIndex = commonFoods.findIndex(f => f.name.trim() === cleanName);
         
@@ -160,7 +160,7 @@ window.app = {
         
         storage.save(config, historyData, commonFoods, customTemplates);
         ui.filterCommon();
-        this.updateUI(); // 關鍵：觸發重新渲染
+        app.updateUI(); // 使用 app.updateUI() 確保 context 正確並觸發重新渲染
     },
 
     // --- 飲食記錄 ---
@@ -264,9 +264,8 @@ window.ui = {
         if (all.length === 0) { list.innerHTML = `<div class="text-center py-12 glass-card rounded-[2.5rem] opacity-30 text-xs font-bold font-['Noto_Sans_TC']">尚無本日紀錄</div>`; return; }
         list.innerHTML = all.map(e => {
             if (e.type === 'food') {
-                // 強化判斷：名稱比對也加上 trim()
                 const isCommon = commonFoods.some(cf => cf.name.trim() === e.name.trim());
-                const servingText = `<span class="text-[#9E9796] text-[10px] font-bold ml-1 tabular-nums">×${e.srv || 1}</span>`;
+                const servingText = `<span class="text-[#9E9796] text-[10px] font-normal ml-1 tabular-nums">×${e.srv || 1}</span>`;
                 
                 return `
                     <div class="glass-card p-4 rounded-3xl flex items-center justify-between animate-fadeIn gap-2">
@@ -283,12 +282,10 @@ window.ui = {
                         </div>
                         <div class="flex items-center gap-0.5 flex-shrink-0">
                             <div class="text-right mr-1.5"><span class="text-sm font-black text-slate-700 tabular-nums">${e.kcal}</span><span class="text-[8px] font-bold text-slate-300 block leading-none">kcal</span></div>
-                            <!-- 星號按鈕：明確控制 fill 屬性與 Tailwind fill-current 類別 -->
                             <button onclick="event.stopPropagation(); app.toggleCommonFromHistory(${e.id})" 
                                     class="${isCommon ? 'text-amber-400' : 'text-slate-200'} p-1 transition-colors">
                                 <i data-lucide="star" 
                                    class="${isCommon ? 'fill-current' : ''}" 
-                                   fill="${isCommon ? 'currentColor' : 'none'}" 
                                    size="14"></i>
                             </button>
                             <button onclick="event.stopPropagation(); app.deleteEntry('food', ${e.id})" 
