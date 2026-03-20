@@ -12,7 +12,6 @@ window.onload = () => {
     storage.migrate();
     const data = storage.load();
     
-    // 確保金鑰同步 (使用 storage.js 定義的 v5 結構)
     if (data.config) {
         config = data.config;
         ui.syncGoalInputs();
@@ -22,6 +21,7 @@ window.onload = () => {
     customTemplates = data.templates || [];
 
     if (window.calendar) calendar.init();
+    
     app.updateUI(); 
     ui.initClickOutside();
 };
@@ -45,8 +45,8 @@ window.app = {
             circle.classList.toggle('text-emerald-500', config.kcal - tk >= 0);
         }
 
-        const displayKcal = document.getElementById('displayCalories');
-        if (displayKcal) displayKcal.innerText = Math.round(tk);
+        const dispKcal = document.getElementById('displayCalories');
+        if (dispKcal) dispKcal.innerText = Math.round(tk);
 
         const statusEl = document.getElementById('calorieStatus');
         if (statusEl) {
@@ -70,7 +70,7 @@ window.app = {
         if (tKcal) tKcal.innerText = config.kcal;
     },
 
-    // --- 常用食物功能 (徹底解決不變色問題) ---
+    // --- 常用食物與星號即時更新修復 ---
     toggleCommonFromHistory(id) {
         const date = calendar.selectedDate;
         const entry = (historyData[date]?.food || []).find(e => e.id == id);
@@ -95,10 +95,12 @@ window.app = {
         
         storage.save(config, historyData, commonFoods, customTemplates);
         ui.filterCommon();
-        this.updateUI(); // 確保重新渲染星號樣式
+        
+        // 核心修復點：確保資料更新後才刷新 UI
+        this.updateUI(); 
     },
 
-    // --- 模板管理 ---
+    // --- 模板與其他管理功能 (保持穩定) ---
     toggleTemplateDropdown() {
         const dropdown = document.getElementById('templateDropdown');
         if (!dropdown.classList.contains('dropdown-active')) {
@@ -182,9 +184,7 @@ window.app = {
         historyData[date].food.unshift(entry);
         ui.resetFoodInputs();
         storage.save(config, historyData, commonFoods, customTemplates);
-        this.updateUI(); 
-        ui.closeModal('foodModal'); 
-        ui.showMessage(`已記錄：${name}`);
+        this.updateUI(); ui.closeModal('foodModal'); ui.showMessage(`已記錄：${name}`);
     },
 
     editFoodEntry(id) {
@@ -212,9 +212,7 @@ window.app = {
             entry.p = p_per * srv; entry.c = c_per * srv; entry.f = f_per * srv;
             entry.kcal = Math.round((entry.p * 4) + (entry.c * 4) + (entry.f * 9));
             storage.save(config, historyData, commonFoods, customTemplates);
-            this.updateUI(); 
-            ui.closeModal('editFoodModal'); 
-            ui.showMessage("已更新紀錄");
+            this.updateUI(); ui.closeModal('editFoodModal'); ui.showMessage("已更新紀錄");
         }
     },
 
@@ -267,16 +265,19 @@ window.ui = {
         const all = [...food.map(e=>({...e, sort: e.id})), ...water.map(e=>({...e, sort: e.id}))].sort((a,b)=>b.sort - a.sort);
         if (all.length === 0) { list.innerHTML = `<div class="text-center py-12 glass-card rounded-[2.5rem] opacity-30 text-xs font-bold font-['Noto_Sans_TC']">尚無本日紀錄</div>`; return; }
         
+        // 核心修改：為每個容器加入 data-refresh，強制瀏覽器識別差異
+        const refreshKey = Date.now();
+
         list.innerHTML = all.map(e => {
             if (e.type === 'food') {
                 const isCommon = commonFoods.some(cf => cf.name.trim().toLowerCase() === e.name.trim().toLowerCase());
                 const servingText = `<span class="text-[#9E9796] text-[10px] font-normal ml-1 tabular-nums">×${e.srv || 1}</span>`;
                 
-                // 強制注入屬性給 Lucide，並使用 setTimeout 渲染
+                // 星號 HTML 加入明確的填滿與描邊屬性，確保 Lucide 能正確轉換
                 const starIcon = `<i data-lucide="star" size="14" fill="${isCommon ? '#fbbf24' : 'none'}" stroke="${isCommon ? '#fbbf24' : 'currentColor'}" class="${isCommon ? 'text-amber-400' : 'text-slate-200'}"></i>`;
 
                 return `
-                    <div class="glass-card p-4 rounded-3xl flex items-center justify-between animate-fadeIn gap-2">
+                    <div class="glass-card p-4 rounded-3xl flex items-center justify-between animate-fadeIn gap-2" data-refresh="${refreshKey}">
                         <div class="flex items-center gap-3 cursor-pointer overflow-hidden flex-1" onclick="app.editFoodEntry(${e.id})">
                             <div class="w-9 h-9 bg-blue-50 rounded-2xl flex-shrink-0 flex items-center justify-center text-blue-500"><i data-lucide="utensils" size="16"></i></div>
                             <div class="overflow-hidden">
@@ -285,24 +286,28 @@ window.ui = {
                                     ${servingText}
                                     <span class="text-[9px] text-slate-300 font-bold tabular-nums ml-auto">${e.time}</span>
                                 </div>
-                                <div class="text-[9px] font-bold text-slate-400 tabular-nums uppercase tracking-tighter">P ${e.p.toFixed(1)} | C ${e.c.toFixed(1)} | F ${e.f.toFixed(1)}</div>
+                                <div class="text-[9px] font-bold text-slate-400 tabular-nums uppercase tracking-tighter">P ${parseFloat(e.p).toFixed(1)} | C ${parseFloat(e.c).toFixed(1)} | F ${parseFloat(e.f).toFixed(1)}</div>
                             </div>
                         </div>
                         <div class="flex items-center gap-0.5 flex-shrink-0">
-                            <div class="text-right mr-1.5"><span class="text-sm font-black text-slate-700 tabular-nums">${e.kcal}</span><span class="text-[8px] font-bold text-slate-300 block leading-none">kcal</span></div>
-                            <button onclick="event.stopPropagation(); app.toggleCommonFromHistory(${e.id})" class="p-1 transition-all">${starIcon}</button>
+                            <div class="text-right mr-1.5"><span class="text-sm font-black text-slate-700 tabular-nums">${Math.round(e.kcal)}</span><span class="text-[8px] font-bold text-slate-300 block leading-none">kcal</span></div>
+                            <button onclick="event.stopPropagation(); app.toggleCommonFromHistory(${e.id})" class="p-1 transition-all active:scale-90">${starIcon}</button>
                             <button onclick="event.stopPropagation(); app.deleteEntry('food', ${e.id})" class="text-slate-200 hover:text-rose-500 p-1"><i data-lucide="x" size="14"></i></button>
                         </div>
                     </div>`;
             } else {
-                return `<div class="glass-card p-4 rounded-3xl flex items-center justify-between animate-fadeIn gap-2">
+                return `<div class="glass-card p-4 rounded-3xl flex items-center justify-between animate-fadeIn gap-2" data-refresh="${refreshKey}">
                         <div class="flex items-center gap-3 overflow-hidden flex-1"><div class="w-9 h-9 bg-sky-50 rounded-2xl flex-shrink-0 flex items-center justify-center text-sky-500"><i data-lucide="droplets" size="16"></i></div>
                         <div class="overflow-hidden"><div class="flex items-center gap-2"><span class="font-bold text-sm text-slate-800">水分補充</span><span class="text-[9px] text-slate-300 font-bold tabular-nums ml-auto">${e.time}</span></div>
                         <div class="text-[9px] font-bold text-sky-400 tabular-nums">💧 ${e.amount} ml</div></div></div>
                         <button onclick="app.deleteEntry('water', ${e.id})" class="text-slate-200 hover:text-rose-500 p-1 flex-shrink-0"><i data-lucide="x" size="14"></i></button></div>`;
             }
         }).join('');
-        setTimeout(() => { if (window.lucide) lucide.createIcons(); }, 0);
+
+        // 強制執行重繪圖示，並使用 requestAnimationFrame 確保 DOM 已經更新
+        requestAnimationFrame(() => {
+            if (window.lucide) lucide.createIcons();
+        });
     },
 
     filterCommon() {
@@ -310,8 +315,8 @@ window.ui = {
         const f = q ? commonFoods.filter(x => x.name.toLowerCase().includes(q)) : commonFoods;
         const l = document.getElementById('commonDropdownList');
         if (!l) return;
-        l.innerHTML = f.length === 0 ? `<div class="p-6 text-xs text-slate-400 text-center font-bold">目前無常用食物</div>` : f.map(x => `<div class="flex items-center justify-between p-4 hover:bg-slate-50 cursor-pointer border-b border-slate-50 last:border-none"><div onclick="ui.fillCommon(${x.id})" class="flex-1"><div class="text-sm font-black text-slate-700">${x.name}</div><div class="text-[10px] text-slate-400 font-bold uppercase tabular-nums">P:${x.p.toFixed(1)} | C:${x.c.toFixed(1)} | F:${x.f.toFixed(1)}</div></div><button onclick="app.deleteCommon(${x.id}, event)" class="p-2 text-slate-300 hover:text-rose-500 transition-all"><i data-lucide="trash-2" size="14"></i></button></div>`).join('');
-        setTimeout(() => { if (window.lucide) lucide.createIcons(); }, 0);
+        l.innerHTML = f.length === 0 ? `<div class="p-6 text-xs text-slate-400 text-center font-bold">目前無常用食物</div>` : f.map(x => `<div class="flex items-center justify-between p-4 hover:bg-slate-50 cursor-pointer border-b border-slate-50 last:border-none"><div onclick="ui.fillCommon(${x.id})" class="flex-1"><div class="text-sm font-black text-slate-700">${x.name}</div><div class="text-[10px] text-slate-400 font-bold uppercase tabular-nums">P:${parseFloat(x.p).toFixed(1)} | C:${parseFloat(x.c).toFixed(1)} | F:${parseFloat(x.f).toFixed(1)}</div></div><button onclick="app.deleteCommon(${x.id}, event)" class="p-2 text-slate-300 hover:text-rose-500 transition-all"><i data-lucide="trash-2" size="14"></i></button></div>`).join('');
+        requestAnimationFrame(() => { if (window.lucide) lucide.createIcons(); });
     },
 
     fillCommon(id) {
@@ -328,5 +333,12 @@ window.ui = {
             const calendarArea = document.getElementById('calendarWrapper');
             if (calendarArea && !calendarArea.contains(e.target) && window.calendar) window.calendar.close();
         });
+    },
+    showMessage(t, type) {
+        const b = document.getElementById('msgBox');
+        if (!b) return;
+        b.innerText = t;
+        b.className = `fixed bottom-24 left-1/2 -translate-x-1/2 px-10 py-4 rounded-2xl shadow-2xl transition-all z-[7000] text-xs font-black uppercase tracking-widest ${type==='error'?'bg-rose-600':'bg-slate-900/95 backdrop-blur'} text-white opacity-100`;
+        setTimeout(() => b.style.opacity = '0', 2500);
     }
 };
