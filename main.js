@@ -11,6 +11,7 @@ let editingEntryId = null;
 window.onload = () => {
     storage.migrate();
     const data = storage.load();
+    
     if (data.config) {
         config = data.config;
         ui.syncGoalInputs();
@@ -19,8 +20,9 @@ window.onload = () => {
     commonFoods = data.common || [];
     customTemplates = data.templates || [];
 
-    calendar.init();
-    lucide.createIcons();
+    if (window.calendar) calendar.init();
+    if (window.lucide) lucide.createIcons();
+    
     app.updateUI(); 
     ui.initClickOutside();
 };
@@ -29,6 +31,7 @@ window.app = {
     updateUI() {
         const date = calendar.selectedDate;
         const data = historyData[date] || { food: [], water: [] };
+        
         const tp = data.food.reduce((s, e) => s + (e.p || 0), 0);
         const tc = data.food.reduce((s, e) => s + (e.c || 0), 0);
         const tf = data.food.reduce((s, e) => s + (e.f || 0), 0);
@@ -58,10 +61,12 @@ window.app = {
         const wPct = Math.min(tw / (config.waterGoal || 1) * 100, 100);
         const wBar = document.getElementById('waterMainBar');
         if (wBar) wBar.style.width = wPct + '%';
-        document.getElementById('waterMainText').innerText = Math.round(wPct) + '%';
+        const wText = document.getElementById('waterMainText');
+        if (wText) wText.innerText = Math.round(wPct) + '%';
 
         ui.renderList(data.food, data.water);
-        document.getElementById('targetKcalDisplay').innerText = config.kcal;
+        const tKcal = document.getElementById('targetKcalDisplay');
+        if (tKcal) tKcal.innerText = config.kcal;
     },
 
     // --- 模板功能 ---
@@ -85,13 +90,26 @@ window.app = {
         if (!list) return;
         let html = `<div class="p-4 hover:bg-emerald-50 cursor-pointer border-b border-slate-50 flex items-center gap-2 text-emerald-600 font-black text-sm" onclick="app.openNewTemplateModal()"><i data-lucide="plus-circle" size="16"></i> 新增模板</div>`;
         customTemplates.forEach(t => {
-            html += `<div class="flex items-center justify-between p-4 hover:bg-slate-50 cursor-pointer border-b border-slate-50 last:border-none group"><div onclick="app.selectTemplate('${t.id}')" class="flex-1"><div class="text-sm font-black text-slate-700">${t.name}</div><div class="text-[10px] text-slate-400 font-bold uppercase tracking-tighter">P:${t.p} | C:${t.c} | F:${t.f} | W:${t.w}</div></div><button onclick="app.deleteTemplate('${t.id}', event)" class="p-2 text-slate-300 hover:text-rose-500 transition-all"><i data-lucide="trash-2" size="14"></i></button></div>`;
+            html += `
+                <div class="flex items-center justify-between p-4 hover:bg-slate-50 cursor-pointer border-b border-slate-50 last:border-none group">
+                    <div onclick="app.selectTemplate('${t.id}')" class="flex-1">
+                        <div class="text-sm font-black text-slate-700">${t.name}</div>
+                        <div class="text-[10px] text-slate-400 font-bold uppercase tracking-tighter">P:${t.p} | C:${t.c} | F:${t.f} | W:${t.w}</div>
+                    </div>
+                    <button onclick="app.deleteTemplate('${t.id}', event)" class="p-2 text-slate-300 hover:text-rose-500 transition-all">
+                        <i data-lucide="trash-2" size="14"></i>
+                    </button>
+                </div>`;
         });
         list.innerHTML = html;
-        lucide.createIcons();
+        if (window.lucide) lucide.createIcons();
     },
 
-    openNewTemplateModal() { this.hideTemplateDropdown(); ui.closeModal('goalModal'); ui.openModal('newTemplateModal'); },
+    openNewTemplateModal() { 
+        this.hideTemplateDropdown(); 
+        ui.closeModal('goalModal'); 
+        ui.openModal('newTemplateModal'); 
+    },
     
     selectTemplate(id) {
         const t = customTemplates.find(x => x.id === id);
@@ -102,7 +120,7 @@ window.app = {
             document.getElementById('targetWater').value = t.w;
             document.getElementById('currentTemplateLabel').innerText = t.name;
             this.updateTargets();
-            ui.showMessage(`已套用模板：${t.name}`);
+            ui.showMessage(`已套用：${t.name}`);
         }
         this.hideTemplateDropdown();
     },
@@ -114,7 +132,7 @@ window.app = {
         this.renderTemplateDropdown();
         ui.showMessage("模板已刪除");
         const label = document.getElementById('currentTemplateLabel');
-        if (label && label.innerText !== '-- 選擇現有模板 --') label.innerText = '-- 選擇現有模板 --';
+        if (label && label.innerText !== '-- 選擇模板 --') label.innerText = '-- 選擇模板 --';
     },
 
     saveNewTemplate() {
@@ -133,7 +151,7 @@ window.app = {
         ui.openModal('goalModal');
     },
 
-    // --- 常用食物功能 (修復重點) ---
+    // --- 常用食物功能 (修正星號無法即時填滿問題) ---
     toggleCommonFromHistory(id) {
         const date = calendar.selectedDate;
         const list = (historyData[date] && historyData[date].food) ? historyData[date].food : [];
@@ -141,8 +159,9 @@ window.app = {
         
         if (!entry) return;
 
-        const cleanName = entry.name.trim();
-        const commonIndex = commonFoods.findIndex(f => f.name.trim() === cleanName);
+        // 統一去空白比對
+        const targetName = entry.name.trim();
+        const commonIndex = commonFoods.findIndex(f => f.name.trim().toLowerCase() === targetName.toLowerCase());
         
         if (commonIndex > -1) {
             commonFoods.splice(commonIndex, 1);
@@ -150,17 +169,17 @@ window.app = {
         } else {
             commonFoods.push({ 
                 id: Date.now(), 
-                name: cleanName, 
+                name: targetName, 
                 p: entry.rawP !== undefined ? entry.rawP : (entry.p / (entry.srv || 1)), 
                 c: entry.rawC !== undefined ? entry.rawC : (entry.c / (entry.srv || 1)), 
                 f: entry.rawF !== undefined ? entry.rawF : (entry.f / (entry.srv || 1)) 
             });
-            ui.showMessage(`"${cleanName}" 已存為常用`);
+            ui.showMessage(`"${targetName}" 已存為常用`);
         }
         
         storage.save(config, historyData, commonFoods, customTemplates);
         ui.filterCommon();
-        app.updateUI(); // 使用 app.updateUI() 確保 context 正確並觸發重新渲染
+        app.updateUI(); // 強制重新渲染列表與圖示
     },
 
     // --- 飲食記錄 ---
@@ -182,7 +201,9 @@ window.app = {
         historyData[date].food.unshift(entry);
         ui.resetFoodInputs();
         storage.save(config, historyData, commonFoods, customTemplates);
-        this.updateUI(); ui.closeModal('foodModal'); ui.showMessage(`已記錄：${name}`);
+        this.updateUI(); 
+        ui.closeModal('foodModal'); 
+        ui.showMessage(`已記錄：${name}`);
     },
 
     editFoodEntry(id) {
@@ -210,7 +231,9 @@ window.app = {
             entry.p = p_per * srv; entry.c = c_per * srv; entry.f = f_per * srv;
             entry.kcal = Math.round((entry.p * 4) + (entry.c * 4) + (entry.f * 9));
             storage.save(config, historyData, commonFoods, customTemplates);
-            this.updateUI(); ui.closeModal('editFoodModal'); ui.showMessage("已更新紀錄");
+            this.updateUI(); 
+            ui.closeModal('editFoodModal'); 
+            ui.showMessage("已更新紀錄");
         }
     },
 
@@ -235,7 +258,7 @@ window.app = {
     showCommon() { document.getElementById('commonFoodDropdown').classList.add('dropdown-active'); ui.filterCommon(); },
     hideCommon() { document.getElementById('commonFoodDropdown').classList.remove('dropdown-active'); },
     toggleCommon(e) { if (e) e.stopPropagation(); const d = document.getElementById('commonFoodDropdown'); d.classList.contains('dropdown-active') ? this.hideCommon() : this.showCommon(); },
-    deleteCommon(id, e) { if (e) e.stopPropagation(); commonFoods = commonFoods.filter(f => f.id !== id); storage.save(config, historyData, commonFoods, customTemplates); ui.filterCommon(); this.updateUI(); },
+    deleteCommon(id, e) { if (e) e.stopPropagation(); commonFoods = commonFoods.filter(f => f.id !== id); storage.save(config, historyData, commonFoods, customTemplates); ui.filterCommon(); app.updateUI(); },
 
     quickWater(ml) { document.getElementById('waterInput').value = ml; },
     addWater() {
@@ -262,9 +285,11 @@ window.ui = {
         const list = document.getElementById('historyList');
         const all = [...food.map(e=>({...e, sort: e.id})), ...water.map(e=>({...e, sort: e.id}))].sort((a,b)=>b.sort - a.sort);
         if (all.length === 0) { list.innerHTML = `<div class="text-center py-12 glass-card rounded-[2.5rem] opacity-30 text-xs font-bold font-['Noto_Sans_TC']">尚無本日紀錄</div>`; return; }
+        
         list.innerHTML = all.map(e => {
             if (e.type === 'food') {
-                const isCommon = commonFoods.some(cf => cf.name.trim() === e.name.trim());
+                // 核心比對邏輯：使用 trim 且不分大小寫
+                const isCommon = commonFoods.some(cf => cf.name.trim().toLowerCase() === e.name.trim().toLowerCase());
                 const servingText = `<span class="text-[#9E9796] text-[10px] font-normal ml-1 tabular-nums">×${e.srv || 1}</span>`;
                 
                 return `
@@ -282,11 +307,13 @@ window.ui = {
                         </div>
                         <div class="flex items-center gap-0.5 flex-shrink-0">
                             <div class="text-right mr-1.5"><span class="text-sm font-black text-slate-700 tabular-nums">${e.kcal}</span><span class="text-[8px] font-bold text-slate-300 block leading-none">kcal</span></div>
+                            <!-- 星號按鈕：明確設定 fill 屬性與顏色 class -->
                             <button onclick="event.stopPropagation(); app.toggleCommonFromHistory(${e.id})" 
-                                    class="${isCommon ? 'text-amber-400' : 'text-slate-200'} p-1 transition-colors">
+                                    class="${isCommon ? 'text-amber-400' : 'text-slate-200'} p-1 transition-all">
                                 <i data-lucide="star" 
-                                   class="${isCommon ? 'fill-current' : ''}" 
-                                   size="14"></i>
+                                   size="14" 
+                                   fill="${isCommon ? 'currentColor' : 'none'}" 
+                                   class="${isCommon ? 'fill-current' : ''}"></i>
                             </button>
                             <button onclick="event.stopPropagation(); app.deleteEntry('food', ${e.id})" 
                                     class="text-slate-200 hover:text-rose-500 p-1">
@@ -297,12 +324,12 @@ window.ui = {
             } else {
                 return `<div class="glass-card p-4 rounded-3xl flex items-center justify-between animate-fadeIn gap-2">
                         <div class="flex items-center gap-3 overflow-hidden flex-1"><div class="w-9 h-9 bg-sky-50 rounded-2xl flex-shrink-0 flex items-center justify-center text-sky-500"><i data-lucide="droplets" size="16"></i></div>
-                        <div class="overflow-hidden"><div class="flex items-center gap-2"><span class="font-bold text-sm text-slate-800">水分補充</span><span class="text-[9px] text-slate-300 font-bold tabular-nums ml-auto">${e.time}</span></div>
+                        <div class="overflow-hidden"><div class="flex items-center gap-1"><span class="font-bold text-sm text-slate-800">水分補充</span><span class="text-[9px] text-slate-300 font-bold tabular-nums ml-auto">${e.time}</span></div>
                         <div class="text-[9px] font-bold text-sky-400 tabular-nums">💧 ${e.amount} ml</div></div></div>
                         <button onclick="app.deleteEntry('water', ${e.id})" class="text-slate-200 hover:text-rose-500 p-1 flex-shrink-0"><i data-lucide="x" size="14"></i></button></div>`;
             }
         }).join('');
-        lucide.createIcons();
+        if (window.lucide) lucide.createIcons();
     },
 
     filterCommon() {
@@ -311,7 +338,7 @@ window.ui = {
         const l = document.getElementById('commonDropdownList');
         if (!l) return;
         l.innerHTML = f.length === 0 ? `<div class="p-6 text-xs text-slate-400 text-center font-bold">目前無常用食物</div>` : f.map(x => `<div class="flex items-center justify-between p-4 hover:bg-slate-50 cursor-pointer border-b border-slate-50 last:border-none"><div onclick="ui.fillCommon(${x.id})" class="flex-1"><div class="text-sm font-black text-slate-700">${x.name}</div><div class="text-[10px] text-slate-400 font-bold uppercase tabular-nums">P:${x.p.toFixed(1)} | C:${x.c.toFixed(1)} | F:${x.f.toFixed(1)}</div></div><button onclick="app.deleteCommon(${x.id}, event)" class="p-2 text-slate-300 hover:text-rose-500 transition-all"><i data-lucide="trash-2" size="14"></i></button></div>`).join('');
-        lucide.createIcons();
+        if (window.lucide) lucide.createIcons();
     },
 
     fillCommon(id) {
