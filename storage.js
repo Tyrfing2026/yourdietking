@@ -20,7 +20,6 @@ const storage = {
         }
     },
 
-    // 核心修正：明確儲存所有欄位，若傳入 undefined 則保持現狀
     save(config, history, common, templates) {
         if (config) localStorage.setItem(this.keys.config, JSON.stringify(config));
         if (history) localStorage.setItem(this.keys.history, JSON.stringify(history));
@@ -37,7 +36,6 @@ const storage = {
                 templates: JSON.parse(localStorage.getItem(this.keys.templates)) || []
             };
         } catch (e) {
-            console.error("Data load error", e);
             return { config: null, history: {}, common: [], templates: [] };
         }
     },
@@ -48,21 +46,18 @@ const storage = {
         const url = URL.createObjectURL(blob);
         const a = document.createElement('a');
         const dateStr = new Date().toISOString().split('T')[0];
-        
         a.href = url;
         a.download = `飲控助手備份_${dateStr}.json`;
         document.body.appendChild(a);
         a.click();
         document.body.removeChild(a);
         URL.revokeObjectURL(url);
-        
         if (window.ui) ui.showMessage("備份下載中...");
     },
 
     import(event) {
         const file = event.target.files[0];
         if (!file) return;
-
         const reader = new FileReader();
         reader.onload = (e) => {
             try {
@@ -71,11 +66,9 @@ const storage = {
                     this.save(data.config, data.history, data.common || [], data.templates || []);
                     if (window.ui) ui.showMessage("匯入成功！即將重新整理");
                     setTimeout(() => location.reload(), 1000);
-                } else {
-                    throw new Error("格式錯誤");
-                }
+                } else { throw new Error(); }
             } catch (err) {
-                if (window.ui) ui.showMessage("匯入失敗：格式不符", "error");
+                if (window.ui) ui.showMessage("匯入失敗", "error");
             }
         };
         reader.readAsText(file);
