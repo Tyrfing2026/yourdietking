@@ -21,13 +21,13 @@ window.onload = () => {
     customTemplates = data.templates || [];
 
     if (window.calendar) calendar.init();
-    if (window.lucide) lucide.createIcons();
     
     app.updateUI(); 
     ui.initClickOutside();
 };
 
 window.app = {
+    // 核心 UI 更新
     updateUI() {
         const date = calendar.selectedDate;
         const data = historyData[date] || { food: [], water: [] };
@@ -57,7 +57,7 @@ window.app = {
         ui.setBar('carbs', tc, config.carbs);
         ui.setBar('fat', tf, config.fat);
 
-        const tw = data.water.reduce((s, e) => s + e.amount, 0);
+        const tw = data.water.reduce((s, e) => s + (e.amount || 0), 0);
         const wPct = Math.min(tw / (config.waterGoal || 1) * 100, 100);
         const wBar = document.getElementById('waterMainBar');
         if (wBar) wBar.style.width = wPct + '%';
@@ -69,7 +69,7 @@ window.app = {
         if (tKcal) tKcal.innerText = config.kcal;
     },
 
-    // --- 模板功能 ---
+    // --- 模板管理 ---
     toggleTemplateDropdown() {
         const dropdown = document.getElementById('templateDropdown');
         if (!dropdown.classList.contains('dropdown-active')) {
@@ -90,26 +90,19 @@ window.app = {
         if (!list) return;
         let html = `<div class="p-4 hover:bg-emerald-50 cursor-pointer border-b border-slate-50 flex items-center gap-2 text-emerald-600 font-black text-sm" onclick="app.openNewTemplateModal()"><i data-lucide="plus-circle" size="16"></i> 新增模板</div>`;
         customTemplates.forEach(t => {
-            html += `
-                <div class="flex items-center justify-between p-4 hover:bg-slate-50 cursor-pointer border-b border-slate-50 last:border-none group">
-                    <div onclick="app.selectTemplate('${t.id}')" class="flex-1">
-                        <div class="text-sm font-black text-slate-700">${t.name}</div>
-                        <div class="text-[10px] text-slate-400 font-bold uppercase tracking-tighter">P:${t.p} | C:${t.c} | F:${t.f} | W:${t.w}</div>
-                    </div>
-                    <button onclick="app.deleteTemplate('${t.id}', event)" class="p-2 text-slate-300 hover:text-rose-500 transition-all">
-                        <i data-lucide="trash-2" size="14"></i>
-                    </button>
-                </div>`;
+            html += `<div class="flex items-center justify-between p-4 hover:bg-slate-50 cursor-pointer border-b border-slate-50 last:border-none group">
+                <div onclick="app.selectTemplate('${t.id}')" class="flex-1">
+                    <div class="text-sm font-black text-slate-700">${t.name}</div>
+                    <div class="text-[10px] text-slate-400 font-bold uppercase tracking-tighter">P:${t.p} | C:${t.c} | F:${t.f} | W:${t.w}</div>
+                </div>
+                <button onclick="app.deleteTemplate('${t.id}', event)" class="p-2 text-slate-300 hover:text-rose-500 transition-all"><i data-lucide="trash-2" size="14"></i></button>
+            </div>`;
         });
         list.innerHTML = html;
         if (window.lucide) lucide.createIcons();
     },
 
-    openNewTemplateModal() { 
-        this.hideTemplateDropdown(); 
-        ui.closeModal('goalModal'); 
-        ui.openModal('newTemplateModal'); 
-    },
+    openNewTemplateModal() { this.hideTemplateDropdown(); ui.closeModal('goalModal'); ui.openModal('newTemplateModal'); },
     
     selectTemplate(id) {
         const t = customTemplates.find(x => x.id === id);
@@ -120,7 +113,7 @@ window.app = {
             document.getElementById('targetWater').value = t.w;
             document.getElementById('currentTemplateLabel').innerText = t.name;
             this.updateTargets();
-            ui.showMessage(`已套用：${t.name}`);
+            ui.showMessage(`已套用模板：${t.name}`);
         }
         this.hideTemplateDropdown();
     },
@@ -151,15 +144,12 @@ window.app = {
         ui.openModal('goalModal');
     },
 
-    // --- 常用食物功能 (修正星號無法即時填滿問題) ---
+    // --- 常用食物與星號修復 ---
     toggleCommonFromHistory(id) {
         const date = calendar.selectedDate;
-        const list = (historyData[date] && historyData[date].food) ? historyData[date].food : [];
-        const entry = list.find(e => e.id == id);
-        
+        const entry = (historyData[date]?.food || []).find(e => e.id == id);
         if (!entry) return;
 
-        // 統一去空白比對
         const targetName = entry.name.trim();
         const commonIndex = commonFoods.findIndex(f => f.name.trim().toLowerCase() === targetName.toLowerCase());
         
@@ -179,7 +169,7 @@ window.app = {
         
         storage.save(config, historyData, commonFoods, customTemplates);
         ui.filterCommon();
-        app.updateUI(); // 強制重新渲染列表與圖示
+        app.updateUI(); // 強制執行完整 Redraw
     },
 
     // --- 飲食記錄 ---
@@ -201,7 +191,7 @@ window.app = {
         historyData[date].food.unshift(entry);
         ui.resetFoodInputs();
         storage.save(config, historyData, commonFoods, customTemplates);
-        this.updateUI(); 
+        app.updateUI(); 
         ui.closeModal('foodModal'); 
         ui.showMessage(`已記錄：${name}`);
     },
@@ -231,7 +221,7 @@ window.app = {
             entry.p = p_per * srv; entry.c = c_per * srv; entry.f = f_per * srv;
             entry.kcal = Math.round((entry.p * 4) + (entry.c * 4) + (entry.f * 9));
             storage.save(config, historyData, commonFoods, customTemplates);
-            this.updateUI(); 
+            app.updateUI(); 
             ui.closeModal('editFoodModal'); 
             ui.showMessage("已更新紀錄");
         }
@@ -241,7 +231,7 @@ window.app = {
         if (historyData[calendar.selectedDate]) {
             historyData[calendar.selectedDate][type] = historyData[calendar.selectedDate][type].filter(e => e.id != id);
             storage.save(config, historyData, commonFoods, customTemplates);
-            this.updateUI();
+            app.updateUI();
         }
     },
 
@@ -252,7 +242,7 @@ window.app = {
         config.waterGoal = parseFloat(document.getElementById('targetWater').value) || 2000;
         config.kcal = Math.round((config.protein * 4) + (config.carbs * 4) + (config.fat * 9));
         storage.save(config, historyData, commonFoods, customTemplates);
-        this.updateUI();
+        app.updateUI();
     },
 
     showCommon() { document.getElementById('commonFoodDropdown').classList.add('dropdown-active'); ui.filterCommon(); },
@@ -269,7 +259,9 @@ window.app = {
         historyData[calendar.selectedDate].water.unshift(entry);
         document.getElementById('waterInput').value = "";
         storage.save(config, historyData, commonFoods, customTemplates);
-        this.updateUI(); ui.closeModal('waterModal'); ui.showMessage(`飲水 +${ml}ml`);
+        app.updateUI(); 
+        ui.closeModal('waterModal'); 
+        ui.showMessage(`飲水 +${ml}ml`);
     },
     getTaipeiTime() { return new Date().toLocaleTimeString('zh-TW', { timeZone: 'Asia/Taipei', hour: '2-digit', minute: '2-digit', hour12: false }); }
 };
@@ -288,10 +280,17 @@ window.ui = {
         
         list.innerHTML = all.map(e => {
             if (e.type === 'food') {
-                // 核心比對邏輯：使用 trim 且不分大小寫
                 const isCommon = commonFoods.some(cf => cf.name.trim().toLowerCase() === e.name.trim().toLowerCase());
                 const servingText = `<span class="text-[#9E9796] text-[10px] font-normal ml-1 tabular-nums">×${e.srv || 1}</span>`;
                 
+                // 修正重點：明確在 <i> 標籤使用 fill 與 stroke
+                const starIcon = `
+                    <i data-lucide="star" 
+                       size="14" 
+                       fill="${isCommon ? '#fbbf24' : 'none'}" 
+                       stroke="${isCommon ? '#fbbf24' : 'currentColor'}"
+                       class="${isCommon ? 'text-amber-400' : 'text-slate-200'}"></i>`;
+
                 return `
                     <div class="glass-card p-4 rounded-3xl flex items-center justify-between animate-fadeIn gap-2">
                         <div class="flex items-center gap-3 cursor-pointer overflow-hidden flex-1" onclick="app.editFoodEntry(${e.id})">
@@ -307,16 +306,10 @@ window.ui = {
                         </div>
                         <div class="flex items-center gap-0.5 flex-shrink-0">
                             <div class="text-right mr-1.5"><span class="text-sm font-black text-slate-700 tabular-nums">${e.kcal}</span><span class="text-[8px] font-bold text-slate-300 block leading-none">kcal</span></div>
-                            <!-- 星號按鈕：明確設定 fill 屬性與顏色 class -->
-                            <button onclick="event.stopPropagation(); app.toggleCommonFromHistory(${e.id})" 
-                                    class="${isCommon ? 'text-amber-400' : 'text-slate-200'} p-1 transition-all">
-                                <i data-lucide="star" 
-                                   size="14" 
-                                   fill="${isCommon ? 'currentColor' : 'none'}" 
-                                   class="${isCommon ? 'fill-current' : ''}"></i>
+                            <button onclick="event.stopPropagation(); app.toggleCommonFromHistory(${e.id})" class="p-1 transition-all">
+                                ${starIcon}
                             </button>
-                            <button onclick="event.stopPropagation(); app.deleteEntry('food', ${e.id})" 
-                                    class="text-slate-200 hover:text-rose-500 p-1">
+                            <button onclick="event.stopPropagation(); app.deleteEntry('food', ${e.id})" class="text-slate-200 hover:text-rose-500 p-1">
                                 <i data-lucide="x" size="14"></i>
                             </button>
                         </div>
@@ -324,12 +317,14 @@ window.ui = {
             } else {
                 return `<div class="glass-card p-4 rounded-3xl flex items-center justify-between animate-fadeIn gap-2">
                         <div class="flex items-center gap-3 overflow-hidden flex-1"><div class="w-9 h-9 bg-sky-50 rounded-2xl flex-shrink-0 flex items-center justify-center text-sky-500"><i data-lucide="droplets" size="16"></i></div>
-                        <div class="overflow-hidden"><div class="flex items-center gap-1"><span class="font-bold text-sm text-slate-800">水分補充</span><span class="text-[9px] text-slate-300 font-bold tabular-nums ml-auto">${e.time}</span></div>
+                        <div class="overflow-hidden"><div class="flex items-center gap-2"><span class="font-bold text-sm text-slate-800">水分補充</span><span class="text-[9px] text-slate-300 font-bold tabular-nums ml-auto">${e.time}</span></div>
                         <div class="text-[9px] font-bold text-sky-400 tabular-nums">💧 ${e.amount} ml</div></div></div>
                         <button onclick="app.deleteEntry('water', ${e.id})" class="text-slate-200 hover:text-rose-500 p-1 flex-shrink-0"><i data-lucide="x" size="14"></i></button></div>`;
             }
         }).join('');
-        if (window.lucide) lucide.createIcons();
+
+        // 重要：確保 DOM 更新後才執行圖示渲染
+        setTimeout(() => { if (window.lucide) lucide.createIcons(); }, 0);
     },
 
     filterCommon() {
@@ -338,7 +333,7 @@ window.ui = {
         const l = document.getElementById('commonDropdownList');
         if (!l) return;
         l.innerHTML = f.length === 0 ? `<div class="p-6 text-xs text-slate-400 text-center font-bold">目前無常用食物</div>` : f.map(x => `<div class="flex items-center justify-between p-4 hover:bg-slate-50 cursor-pointer border-b border-slate-50 last:border-none"><div onclick="ui.fillCommon(${x.id})" class="flex-1"><div class="text-sm font-black text-slate-700">${x.name}</div><div class="text-[10px] text-slate-400 font-bold uppercase tabular-nums">P:${x.p.toFixed(1)} | C:${x.c.toFixed(1)} | F:${x.f.toFixed(1)}</div></div><button onclick="app.deleteCommon(${x.id}, event)" class="p-2 text-slate-300 hover:text-rose-500 transition-all"><i data-lucide="trash-2" size="14"></i></button></div>`).join('');
-        if (window.lucide) lucide.createIcons();
+        setTimeout(() => { if (window.lucide) lucide.createIcons(); }, 0);
     },
 
     fillCommon(id) {
