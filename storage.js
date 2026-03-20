@@ -10,15 +10,16 @@ const storage = {
     },
 
     migrate() {
-        // 如果發現舊版本 v2 的資料，嘗試遷移一次
-        if (!localStorage.getItem(this.keys.history)) {
-            const v2History = localStorage.getItem('macroTracker_v2_history');
-            if (v2History) {
-                localStorage.setItem(this.keys.history, v2History);
-                localStorage.setItem(this.keys.config, localStorage.getItem('macroTracker_v2_config') || '');
-                localStorage.setItem(this.keys.common, localStorage.getItem('macroTracker_v2_commonFoods') || '');
+        // 確保舊版本資料能遷移到最新金鑰下
+        const versions = ['v2', 'v4'];
+        versions.forEach(v => {
+            const oldHistory = localStorage.getItem(`macroTracker_${v}_history`);
+            if (oldHistory && !localStorage.getItem(this.keys.history)) {
+                localStorage.setItem(this.keys.history, oldHistory);
+                localStorage.setItem(this.keys.config, localStorage.getItem(`macroTracker_${v}_config`) || '');
+                localStorage.setItem(this.keys.common, localStorage.getItem(`macroTracker_${v}_commonFoods`) || '');
             }
-        }
+        });
     },
 
     save(config, history, common, templates) {
@@ -30,12 +31,11 @@ const storage = {
 
     load() {
         try {
-            const templatesData = localStorage.getItem(this.keys.templates);
             return {
-                config: JSON.parse(localStorage.getItem(this.keys.config)) || null,
+                config: JSON.parse(localStorage.getItem(this.keys.config)) || { protein: 150, carbs: 200, fat: 65, waterGoal: 2000, kcal: 2000 },
                 history: JSON.parse(localStorage.getItem(this.keys.history)) || {},
                 common: JSON.parse(localStorage.getItem(this.keys.common)) || [],
-                templates: templatesData ? JSON.parse(templatesData) : []
+                templates: JSON.parse(localStorage.getItem(this.keys.templates)) || []
             };
         } catch (e) {
             console.error("Storage Load Error", e);
@@ -49,8 +49,11 @@ const storage = {
         const url = URL.createObjectURL(blob);
         const a = document.createElement('a');
         const dateStr = new Date().toISOString().split('T')[0];
-        a.href = url; a.download = `飲控助手備份_${dateStr}.json`;
-        document.body.appendChild(a); a.click(); document.body.removeChild(a);
+        a.href = url;
+        a.download = `飲控助手備份_${dateStr}.json`;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
         URL.revokeObjectURL(url);
         if (window.ui) ui.showMessage("備份下載中...");
     },
@@ -62,17 +65,15 @@ const storage = {
         reader.onload = (e) => {
             try {
                 const data = JSON.parse(e.target.result);
-                // 支援 v2 與 v5 的匯入格式相容
-                const config = data.config;
-                const history = data.history || data.historyData;
-                const common = data.common || data.commonFoods || [];
-                const templates = data.templates || [];
+                // 相容性判斷
+                const hist = data.history || data.historyData || {};
+                const conf = data.config || {};
+                const comm = data.common || data.commonFoods || [];
+                const tpls = data.templates || [];
                 
-                if (config && history) {
-                    this.save(config, history, common, templates);
-                    if (window.ui) ui.showMessage("匯入成功！即將重新整理");
-                    setTimeout(() => location.reload(), 1000);
-                } else { throw new Error("Format Error"); }
+                this.save(conf, hist, comm, tpls);
+                if (window.ui) ui.showMessage("匯入成功！即將重新整理");
+                setTimeout(() => location.reload(), 1000);
             } catch (err) {
                 if (window.ui) ui.showMessage("匯入失敗：格式不符", "error");
             }

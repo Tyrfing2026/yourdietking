@@ -9,26 +9,33 @@ let customTemplates = [];
 let editingEntryId = null; 
 
 window.onload = () => {
+    // 1. 資料載入
     storage.migrate();
     const data = storage.load();
-    
-    // 確保金鑰同步 (使用 storage.js 定義的 v5 結構)
-    if (data.config) {
-        config = data.config;
-        ui.syncGoalInputs();
-    }
+    if (data.config) config = data.config;
     historyData = data.history || {};
     commonFoods = data.common || [];
     customTemplates = data.templates || [];
 
+    // 2. 初始化目標輸入框
+    ui.syncGoalInputs();
+
+    // 3. 關鍵：初始化日曆 (確保 selectedDate 被設為今天，並寫入 DOM)
     if (window.calendar) calendar.init();
+    
+    // 4. 更新主介面
     app.updateUI(); 
+    
+    // 5. 點擊外部監聽與圖示初始化
     ui.initClickOutside();
+    if (window.lucide) lucide.createIcons();
 };
 
 window.app = {
     updateUI() {
         const date = calendar.selectedDate;
+        if (!date) return; // 安全檢查
+
         const data = historyData[date] || { food: [], water: [] };
         
         const tp = data.food.reduce((s, e) => s + (parseFloat(e.p) || 0), 0);
@@ -45,8 +52,8 @@ window.app = {
             circle.classList.toggle('text-emerald-500', config.kcal - tk >= 0);
         }
 
-        const displayKcal = document.getElementById('displayCalories');
-        if (displayKcal) displayKcal.innerText = Math.round(tk);
+        const dispKcal = document.getElementById('displayCalories');
+        if (dispKcal) dispKcal.innerText = Math.round(tk);
 
         const statusEl = document.getElementById('calorieStatus');
         if (statusEl) {
@@ -70,7 +77,6 @@ window.app = {
         if (tKcal) tKcal.innerText = config.kcal;
     },
 
-    // --- 常用食物功能 (徹底解決不變色問題) ---
     toggleCommonFromHistory(id) {
         const date = calendar.selectedDate;
         const entry = (historyData[date]?.food || []).find(e => e.id == id);
@@ -84,21 +90,18 @@ window.app = {
             ui.showMessage(`已從常用清單移除`);
         } else {
             commonFoods.push({ 
-                id: Date.now(), 
-                name: targetName, 
+                id: Date.now(), name: targetName, 
                 p: entry.rawP !== undefined ? entry.rawP : (entry.p / (entry.srv || 1)), 
                 c: entry.rawC !== undefined ? entry.rawC : (entry.c / (entry.srv || 1)), 
                 f: entry.rawF !== undefined ? entry.rawF : (entry.f / (entry.srv || 1)) 
             });
             ui.showMessage(`"${targetName}" 已存為常用`);
         }
-        
         storage.save(config, historyData, commonFoods, customTemplates);
         ui.filterCommon();
-        this.updateUI(); // 確保重新渲染星號樣式
+        this.updateUI(); 
     },
 
-    // --- 模板管理 ---
     toggleTemplateDropdown() {
         const dropdown = document.getElementById('templateDropdown');
         if (!dropdown.classList.contains('dropdown-active')) {
@@ -182,9 +185,7 @@ window.app = {
         historyData[date].food.unshift(entry);
         ui.resetFoodInputs();
         storage.save(config, historyData, commonFoods, customTemplates);
-        this.updateUI(); 
-        ui.closeModal('foodModal'); 
-        ui.showMessage(`已記錄：${name}`);
+        this.updateUI(); ui.closeModal('foodModal'); ui.showMessage(`已記錄：${name}`);
     },
 
     editFoodEntry(id) {
@@ -212,9 +213,7 @@ window.app = {
             entry.p = p_per * srv; entry.c = c_per * srv; entry.f = f_per * srv;
             entry.kcal = Math.round((entry.p * 4) + (entry.c * 4) + (entry.f * 9));
             storage.save(config, historyData, commonFoods, customTemplates);
-            this.updateUI(); 
-            ui.closeModal('editFoodModal'); 
-            ui.showMessage("已更新紀錄");
+            this.updateUI(); ui.closeModal('editFoodModal'); ui.showMessage("已更新紀錄");
         }
     },
 
@@ -271,8 +270,6 @@ window.ui = {
             if (e.type === 'food') {
                 const isCommon = commonFoods.some(cf => cf.name.trim().toLowerCase() === e.name.trim().toLowerCase());
                 const servingText = `<span class="text-[#9E9796] text-[10px] font-normal ml-1 tabular-nums">×${e.srv || 1}</span>`;
-                
-                // 強制注入屬性給 Lucide，並使用 setTimeout 渲染
                 const starIcon = `<i data-lucide="star" size="14" fill="${isCommon ? '#fbbf24' : 'none'}" stroke="${isCommon ? '#fbbf24' : 'currentColor'}" class="${isCommon ? 'text-amber-400' : 'text-slate-200'}"></i>`;
 
                 return `
@@ -285,12 +282,12 @@ window.ui = {
                                     ${servingText}
                                     <span class="text-[9px] text-slate-300 font-bold tabular-nums ml-auto">${e.time}</span>
                                 </div>
-                                <div class="text-[9px] font-bold text-slate-400 tabular-nums uppercase tracking-tighter">P ${e.p.toFixed(1)} | C ${e.c.toFixed(1)} | F ${e.f.toFixed(1)}</div>
+                                <div class="text-[9px] font-bold text-slate-400 tabular-nums uppercase tracking-tighter">P ${parseFloat(e.p).toFixed(1)} | C ${parseFloat(e.c).toFixed(1)} | F ${parseFloat(e.f).toFixed(1)}</div>
                             </div>
                         </div>
                         <div class="flex items-center gap-0.5 flex-shrink-0">
-                            <div class="text-right mr-1.5"><span class="text-sm font-black text-slate-700 tabular-nums">${e.kcal}</span><span class="text-[8px] font-bold text-slate-300 block leading-none">kcal</span></div>
-                            <button onclick="event.stopPropagation(); app.toggleCommonFromHistory(${e.id})" class="p-1 transition-all">${starIcon}</button>
+                            <div class="text-right mr-1.5"><span class="text-sm font-black text-slate-700 tabular-nums">${Math.round(e.kcal)}</span><span class="text-[8px] font-bold text-slate-300 block leading-none">kcal</span></div>
+                            <button onclick="event.stopPropagation(); app.toggleCommonFromHistory(${e.id})" class="p-1 transition-all active:scale-90">${starIcon}</button>
                             <button onclick="event.stopPropagation(); app.deleteEntry('food', ${e.id})" class="text-slate-200 hover:text-rose-500 p-1"><i data-lucide="x" size="14"></i></button>
                         </div>
                     </div>`;
@@ -310,7 +307,7 @@ window.ui = {
         const f = q ? commonFoods.filter(x => x.name.toLowerCase().includes(q)) : commonFoods;
         const l = document.getElementById('commonDropdownList');
         if (!l) return;
-        l.innerHTML = f.length === 0 ? `<div class="p-6 text-xs text-slate-400 text-center font-bold">目前無常用食物</div>` : f.map(x => `<div class="flex items-center justify-between p-4 hover:bg-slate-50 cursor-pointer border-b border-slate-50 last:border-none"><div onclick="ui.fillCommon(${x.id})" class="flex-1"><div class="text-sm font-black text-slate-700">${x.name}</div><div class="text-[10px] text-slate-400 font-bold uppercase tabular-nums">P:${x.p.toFixed(1)} | C:${x.c.toFixed(1)} | F:${x.f.toFixed(1)}</div></div><button onclick="app.deleteCommon(${x.id}, event)" class="p-2 text-slate-300 hover:text-rose-500 transition-all"><i data-lucide="trash-2" size="14"></i></button></div>`).join('');
+        l.innerHTML = f.length === 0 ? `<div class="p-6 text-xs text-slate-400 text-center font-bold">目前無常用食物</div>` : f.map(x => `<div class="flex items-center justify-between p-4 hover:bg-slate-50 cursor-pointer border-b border-slate-50 last:border-none"><div onclick="ui.fillCommon(${x.id})" class="flex-1"><div class="text-sm font-black text-slate-700">${x.name}</div><div class="text-[10px] text-slate-400 font-bold uppercase tabular-nums">P:${parseFloat(x.p).toFixed(1)} | C:${parseFloat(x.c).toFixed(1)} | F:${parseFloat(x.f).toFixed(1)}</div></div><button onclick="app.deleteCommon(${x.id}, event)" class="p-2 text-slate-300 hover:text-rose-500 transition-all"><i data-lucide="trash-2" size="14"></i></button></div>`).join('');
         setTimeout(() => { if (window.lucide) lucide.createIcons(); }, 0);
     },
 
@@ -328,5 +325,12 @@ window.ui = {
             const calendarArea = document.getElementById('calendarWrapper');
             if (calendarArea && !calendarArea.contains(e.target) && window.calendar) window.calendar.close();
         });
+    },
+    showMessage(t, type) {
+        const b = document.getElementById('msgBox');
+        if (!b) return;
+        b.innerText = t;
+        b.className = `fixed bottom-24 left-1/2 -translate-x-1/2 px-10 py-4 rounded-2xl shadow-2xl transition-all z-[7000] text-xs font-black uppercase tracking-widest ${type==='error'?'bg-rose-600':'bg-slate-900/95 backdrop-blur'} text-white opacity-100`;
+        setTimeout(() => b.style.opacity = '0', 2500);
     }
 };
