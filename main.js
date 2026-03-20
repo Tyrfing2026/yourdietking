@@ -269,7 +269,7 @@ window.ui = {
         list.innerHTML = all.map(e => {
             if (e.type === 'food') {
                 const isCommon = commonFoods.some(cf => cf.name.trim().toLowerCase() === e.name.trim().toLowerCase());
-                const servingText = `<span class="text-[#9E9796] text-[10px] font-bold ml-1 tabular-nums">×${e.srv || 1}</span>`;
+                const servingText = `<span class="text-[#9E9796] text-[12px] font-black ml-1 tabular-nums">×${e.srv || 1}</span>`;
                 const starIcon = `<i data-lucide="star" size="14" fill="${isCommon ? '#fbbf24' : 'none'}" stroke="${isCommon ? '#fbbf24' : 'currentColor'}" class="${isCommon ? 'text-amber-400' : 'text-slate-200'}"></i>`;
 
                 return `
