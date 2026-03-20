@@ -20,11 +20,13 @@ const storage = {
         }
     },
 
+    // 核心修正：明確要求 4 個參數，若沒傳則抓取目前已有的
     save(config, history, common, templates) {
-        localStorage.setItem(this.keys.config, JSON.stringify(config));
-        localStorage.setItem(this.keys.history, JSON.stringify(history));
-        localStorage.setItem(this.keys.common, JSON.stringify(common));
-        localStorage.setItem(this.keys.templates, JSON.stringify(templates));
+        if (config) localStorage.setItem(this.keys.config, JSON.stringify(config));
+        if (history) localStorage.setItem(this.keys.history, JSON.stringify(history));
+        if (common) localStorage.setItem(this.keys.common, JSON.stringify(common));
+        // 防止模板被 undefined 覆蓋成 null
+        if (templates) localStorage.setItem(this.keys.templates, JSON.stringify(templates));
     },
 
     load() {
@@ -32,7 +34,7 @@ const storage = {
             config: JSON.parse(localStorage.getItem(this.keys.config)),
             history: JSON.parse(localStorage.getItem(this.keys.history)) || {},
             common: JSON.parse(localStorage.getItem(this.keys.common)) || [],
-            templates: JSON.parse(localStorage.getItem(this.keys.templates)) || null
+            templates: JSON.parse(localStorage.getItem(this.keys.templates)) || []
         };
     },
 
