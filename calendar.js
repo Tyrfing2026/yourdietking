@@ -4,22 +4,22 @@
 
 window.calendar = {
     selectedDate: '', // 格式: YYYY-MM-DD
-    viewDate: new Date(), // 當前日曆切換到的月份查看點
+    viewDate: new Date(),
 
     init() {
-        // 1. 取得台北時間的今天
+        // 1. 取得當前日期 (考慮台北時區)
         const now = new Date();
         this.selectedDate = this.formatDate(now);
         this.viewDate = new Date(now);
 
-        // 2. 立即更新介面上的文字標籤，防止出現 "--"
-        this.updateDisplayLabel();
+        // 2. 核心修正：立即將日期寫入介面，防止出現 "--"
+        this.syncUIDate();
         
-        // 3. 渲染日曆網格
+        // 3. 渲染日曆小視窗
         this.renderGrid();
     },
 
-    // 格式化日期為 YYYY-MM-DD
+    // 格式化日期為 YYYY-MM-DD (手動拼接最安全)
     formatDate(date) {
         const y = date.getFullYear();
         const m = String(date.getMonth() + 1).padStart(2, '0');
@@ -27,25 +27,29 @@ window.calendar = {
         return `${y}-${m}-${d}`;
     },
 
-    // 更新底部導航欄的日期文字
-    updateDisplayLabel() {
-        const el = document.getElementById('dateDisplay');
-        const label = document.getElementById('currentDateLabel');
-        
-        if (el) {
-            el.innerText = this.selectedDate;
+    // 同步更新介面上所有的日期標籤
+    syncUIDate() {
+        const dateDisplay = document.getElementById('dateDisplay');
+        const headerLabel = document.getElementById('currentDateLabel');
+        const todayStr = this.formatDate(new Date());
+
+        // 更新底部導航日期
+        if (dateDisplay) {
+            dateDisplay.innerText = this.selectedDate;
         }
 
-        // 更新頂部標題旁的「今天/日期」標籤
-        if (label) {
-            const todayStr = this.formatDate(new Date());
-            label.innerText = (this.selectedDate === todayStr) ? "今天" : this.selectedDate;
+        // 更新頂部標題旁的標籤
+        if (headerLabel) {
+            headerLabel.innerText = (this.selectedDate === todayStr) ? "今天" : this.selectedDate;
         }
     },
 
     toggle() {
         const modal = document.getElementById('calendarModal');
-        modal.classList.toggle('active');
+        if (modal) {
+            modal.classList.toggle('active');
+            if (modal.classList.contains('active')) this.renderGrid();
+        }
     },
 
     close() {
@@ -59,10 +63,8 @@ window.calendar = {
         this.selectedDate = this.formatDate(current);
         this.viewDate = new Date(current);
         
-        this.updateDisplayLabel();
+        this.syncUIDate();
         this.renderGrid();
-        
-        // 連動主 App 更新數據
         if (window.app) app.updateUI();
     },
 
@@ -71,7 +73,7 @@ window.calendar = {
         this.selectedDate = this.formatDate(now);
         this.viewDate = new Date(now);
         
-        this.updateDisplayLabel();
+        this.syncUIDate();
         this.renderGrid();
         if (window.app) app.updateUI();
         this.close();
@@ -84,7 +86,7 @@ window.calendar = {
 
     selectDate(dateStr) {
         this.selectedDate = dateStr;
-        this.updateDisplayLabel();
+        this.syncUIDate();
         this.renderGrid();
         if (window.app) app.updateUI();
         this.close();
@@ -96,23 +98,21 @@ window.calendar = {
         if (!grid || !viewLabel) return;
 
         grid.innerHTML = '';
-        
         const year = this.viewDate.getFullYear();
         const month = this.viewDate.getMonth();
         viewLabel.innerText = `${year}年 ${month + 1}月`;
 
-        // 計算該月第一天與最後一天
         const firstDay = new Date(year, month, 1).getDay();
         const lastDate = new Date(year, month + 1, 0).getDate();
 
-        // 填充上個月的空白
+        // 填充空白
         for (let i = 0; i < firstDay; i++) {
             const empty = document.createElement('div');
             empty.className = 'day-cell day-other opacity-0';
             grid.appendChild(empty);
         }
 
-        // 填充本月日期
+        // 填充日期
         for (let d = 1; d <= lastDate; d++) {
             const dateObj = new Date(year, month, d);
             const dateStr = this.formatDate(dateObj);
