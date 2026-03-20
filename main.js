@@ -9,24 +9,24 @@ let customTemplates = [];
 let editingEntryId = null; 
 
 window.onload = () => {
+    // 1. 資料載入
     storage.migrate();
     const data = storage.load();
-    
-    if (data.config) {
-        config = data.config;
-        ui.syncGoalInputs();
-    }
+    if (data.config) config = data.config;
     historyData = data.history || {};
     commonFoods = data.common || [];
     customTemplates = data.templates || [];
 
-    // 1. 先初始化日曆 (這會決定 selectedDate 是今天)
+    // 2. 初始化目標輸入框
+    ui.syncGoalInputs();
+
+    // 3. 關鍵：初始化日曆 (確保 selectedDate 被設為今天，並寫入 DOM)
     if (window.calendar) calendar.init();
     
-    // 2. 接著更新 UI (會讀取選定的日期)
+    // 4. 更新主介面
     app.updateUI(); 
     
-    // 3. 其他靜態初始化
+    // 5. 點擊外部監聽與圖示初始化
     ui.initClickOutside();
     if (window.lucide) lucide.createIcons();
 };
@@ -34,6 +34,8 @@ window.onload = () => {
 window.app = {
     updateUI() {
         const date = calendar.selectedDate;
+        if (!date) return; // 安全檢查
+
         const data = historyData[date] || { food: [], water: [] };
         
         const tp = data.food.reduce((s, e) => s + (parseFloat(e.p) || 0), 0);
