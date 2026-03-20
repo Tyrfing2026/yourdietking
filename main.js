@@ -20,10 +20,15 @@ window.onload = () => {
     commonFoods = data.common || [];
     customTemplates = data.templates || [];
 
+    // 1. 先初始化日曆 (這會決定 selectedDate 是今天)
     if (window.calendar) calendar.init();
     
+    // 2. 接著更新 UI (會讀取選定的日期)
     app.updateUI(); 
+    
+    // 3. 其他靜態初始化
     ui.initClickOutside();
+    if (window.lucide) lucide.createIcons();
 };
 
 window.app = {
@@ -70,7 +75,6 @@ window.app = {
         if (tKcal) tKcal.innerText = config.kcal;
     },
 
-    // --- 常用食物與星號即時更新修復 ---
     toggleCommonFromHistory(id) {
         const date = calendar.selectedDate;
         const entry = (historyData[date]?.food || []).find(e => e.id == id);
@@ -84,23 +88,18 @@ window.app = {
             ui.showMessage(`已從常用清單移除`);
         } else {
             commonFoods.push({ 
-                id: Date.now(), 
-                name: targetName, 
+                id: Date.now(), name: targetName, 
                 p: entry.rawP !== undefined ? entry.rawP : (entry.p / (entry.srv || 1)), 
                 c: entry.rawC !== undefined ? entry.rawC : (entry.c / (entry.srv || 1)), 
                 f: entry.rawF !== undefined ? entry.rawF : (entry.f / (entry.srv || 1)) 
             });
             ui.showMessage(`"${targetName}" 已存為常用`);
         }
-        
         storage.save(config, historyData, commonFoods, customTemplates);
         ui.filterCommon();
-        
-        // 核心修復點：確保資料更新後才刷新 UI
         this.updateUI(); 
     },
 
-    // --- 模板與其他管理功能 (保持穩定) ---
     toggleTemplateDropdown() {
         const dropdown = document.getElementById('templateDropdown');
         if (!dropdown.classList.contains('dropdown-active')) {
@@ -265,19 +264,14 @@ window.ui = {
         const all = [...food.map(e=>({...e, sort: e.id})), ...water.map(e=>({...e, sort: e.id}))].sort((a,b)=>b.sort - a.sort);
         if (all.length === 0) { list.innerHTML = `<div class="text-center py-12 glass-card rounded-[2.5rem] opacity-30 text-xs font-bold font-['Noto_Sans_TC']">尚無本日紀錄</div>`; return; }
         
-        // 核心修改：為每個容器加入 data-refresh，強制瀏覽器識別差異
-        const refreshKey = Date.now();
-
         list.innerHTML = all.map(e => {
             if (e.type === 'food') {
                 const isCommon = commonFoods.some(cf => cf.name.trim().toLowerCase() === e.name.trim().toLowerCase());
                 const servingText = `<span class="text-[#9E9796] text-[10px] font-normal ml-1 tabular-nums">×${e.srv || 1}</span>`;
-                
-                // 星號 HTML 加入明確的填滿與描邊屬性，確保 Lucide 能正確轉換
                 const starIcon = `<i data-lucide="star" size="14" fill="${isCommon ? '#fbbf24' : 'none'}" stroke="${isCommon ? '#fbbf24' : 'currentColor'}" class="${isCommon ? 'text-amber-400' : 'text-slate-200'}"></i>`;
 
                 return `
-                    <div class="glass-card p-4 rounded-3xl flex items-center justify-between animate-fadeIn gap-2" data-refresh="${refreshKey}">
+                    <div class="glass-card p-4 rounded-3xl flex items-center justify-between animate-fadeIn gap-2">
                         <div class="flex items-center gap-3 cursor-pointer overflow-hidden flex-1" onclick="app.editFoodEntry(${e.id})">
                             <div class="w-9 h-9 bg-blue-50 rounded-2xl flex-shrink-0 flex items-center justify-center text-blue-500"><i data-lucide="utensils" size="16"></i></div>
                             <div class="overflow-hidden">
@@ -296,18 +290,14 @@ window.ui = {
                         </div>
                     </div>`;
             } else {
-                return `<div class="glass-card p-4 rounded-3xl flex items-center justify-between animate-fadeIn gap-2" data-refresh="${refreshKey}">
+                return `<div class="glass-card p-4 rounded-3xl flex items-center justify-between animate-fadeIn gap-2">
                         <div class="flex items-center gap-3 overflow-hidden flex-1"><div class="w-9 h-9 bg-sky-50 rounded-2xl flex-shrink-0 flex items-center justify-center text-sky-500"><i data-lucide="droplets" size="16"></i></div>
                         <div class="overflow-hidden"><div class="flex items-center gap-2"><span class="font-bold text-sm text-slate-800">水分補充</span><span class="text-[9px] text-slate-300 font-bold tabular-nums ml-auto">${e.time}</span></div>
                         <div class="text-[9px] font-bold text-sky-400 tabular-nums">💧 ${e.amount} ml</div></div></div>
                         <button onclick="app.deleteEntry('water', ${e.id})" class="text-slate-200 hover:text-rose-500 p-1 flex-shrink-0"><i data-lucide="x" size="14"></i></button></div>`;
             }
         }).join('');
-
-        // 強制執行重繪圖示，並使用 requestAnimationFrame 確保 DOM 已經更新
-        requestAnimationFrame(() => {
-            if (window.lucide) lucide.createIcons();
-        });
+        setTimeout(() => { if (window.lucide) lucide.createIcons(); }, 0);
     },
 
     filterCommon() {
@@ -316,7 +306,7 @@ window.ui = {
         const l = document.getElementById('commonDropdownList');
         if (!l) return;
         l.innerHTML = f.length === 0 ? `<div class="p-6 text-xs text-slate-400 text-center font-bold">目前無常用食物</div>` : f.map(x => `<div class="flex items-center justify-between p-4 hover:bg-slate-50 cursor-pointer border-b border-slate-50 last:border-none"><div onclick="ui.fillCommon(${x.id})" class="flex-1"><div class="text-sm font-black text-slate-700">${x.name}</div><div class="text-[10px] text-slate-400 font-bold uppercase tabular-nums">P:${parseFloat(x.p).toFixed(1)} | C:${parseFloat(x.c).toFixed(1)} | F:${parseFloat(x.f).toFixed(1)}</div></div><button onclick="app.deleteCommon(${x.id}, event)" class="p-2 text-slate-300 hover:text-rose-500 transition-all"><i data-lucide="trash-2" size="14"></i></button></div>`).join('');
-        requestAnimationFrame(() => { if (window.lucide) lucide.createIcons(); });
+        setTimeout(() => { if (window.lucide) lucide.createIcons(); }, 0);
     },
 
     fillCommon(id) {
