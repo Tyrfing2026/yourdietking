@@ -1,4 +1,4 @@
-# 🥗 飲控助手 (NutriTrack Assistant)
+# 🥗 飲控助手 (Your Diet King)
 
 <p align="left">
   <img src="https://img.shields.io/badge/Status-Active-9E9796?style=for-the-badge" />
