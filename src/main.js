@@ -158,11 +158,9 @@ window.app = {
         ui.openModal('goalModal');
     },
 
-    // 核心修復：優化新增紀錄的穩定性
     addFood() {
-        if (isProcessing) return; // 避免連擊
+        if (isProcessing) return; 
         
-        // 1. 立即關閉下拉選單以防干擾
         this.hideCommon();
         
         const nameEl = document.getElementById('itemName');
@@ -181,7 +179,7 @@ window.app = {
             return ui.showMessage("請輸入至少一項營養素", "error");
         }
 
-        isProcessing = true; // 鎖定
+        isProcessing = true; 
 
         const entry = {
             id: Date.now(), 
@@ -202,16 +200,13 @@ window.app = {
         if (!historyData[date]) historyData[date] = { food: [], water: [] };
         historyData[date].food.unshift(entry);
 
-        // 2. 儲存並更新介面
         storage.save(config, historyData, commonFoods, customTemplates);
         this.updateUI();
         
-        // 3. 恢復初始狀態
         ui.resetFoodInputs();
         ui.closeModal('foodModal'); 
         ui.showMessage(`已記錄：${name}`);
         
-        // 4. 延遲解除鎖定，防止連按
         setTimeout(() => { isProcessing = false; }, 300);
     },
 
@@ -304,7 +299,8 @@ window.ui = {
         list.innerHTML = all.map(e => {
             if (e.type === 'food') {
                 const isCommon = commonFoods.some(cf => cf.name.trim().toLowerCase() === e.name.trim().toLowerCase());
-                const servingText = (e.srv && e.srv !== 1) ? `<span class="text-[#9E9796] text-[10px] font-normal ml-1 tabular-nums">×${e.srv}</span>` : '';
+                // 修正重點：強制不論份數是多少都顯示
+                const servingText = `<span class="text-[#9E9796] text-[10px] font-black ml-1 tabular-nums">×${e.srv || 1}</span>`;
                 const starIcon = `<i data-lucide="star" size="14" fill="${isCommon ? '#fbbf24' : 'none'}" stroke="${isCommon ? '#fbbf24' : 'currentColor'}" class="${isCommon ? 'text-amber-400' : 'text-slate-200'}"></i>`;
 
                 return `
@@ -361,7 +357,6 @@ window.ui = {
     initClickOutside() {
         document.addEventListener('mousedown', (e) => {
             const foodDropdown = document.getElementById('commonFoodDropdown');
-            // 如果點擊的地方是「確認新增」按鈕，不要干擾它
             if (e.target.closest('button') && e.target.closest('button').innerText.includes("確認新增")) return;
 
             if (foodDropdown && !foodDropdown.contains(e.target)) app.hideCommon();
@@ -379,3 +374,4 @@ window.ui = {
         setTimeout(() => b.style.opacity = '0', 2500);
     }
 };
+
