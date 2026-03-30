@@ -8,7 +8,7 @@
 
 這是一款專為健身愛好者與飲食控制者設計的輕量化、隱私優先的營養追蹤 Web App。無需註冊帳號，所有數據均儲存於您的瀏覽器本地（LocalStorage），確保數據安全且隨開即用。
 
-🚀 **[立即使用 Live Demo](https://tyrfing2026.github.io/yourdietking/)**
+🚀 **[點此引導至飲控助手網頁](https://tyrfing2026.github.io/yourdietking/)**
 
 ---
 
