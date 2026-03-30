@@ -18,9 +18,20 @@ window.onload = () => {
     customTemplates = data.templates || [];
 
     ui.syncGoalInputs();
+    
+    // 初始化日曆
     if (window.calendar) calendar.init();
+    
+    // 更新介面與數據
     app.updateUI(); 
+    
+    // 初始化點擊外部監聽
     ui.initClickOutside();
+
+    // 核心修正：初次進入頁面時，強制執行一次全局圖示轉換
+    if (window.lucide) {
+        lucide.createIcons();
+    }
 };
 
 window.app = {
@@ -299,7 +310,7 @@ window.ui = {
         list.innerHTML = all.map(e => {
             if (e.type === 'food') {
                 const isCommon = commonFoods.some(cf => cf.name.trim().toLowerCase() === e.name.trim().toLowerCase());
-                // 修正重點：強制不論份數是多少都顯示
+                // 修正：不論份數是多少都顯示
                 const servingText = `<span class="text-[#9E9796] text-[10px] font-black ml-1 tabular-nums">×${e.srv || 1}</span>`;
                 const starIcon = `<i data-lucide="star" size="14" fill="${isCommon ? '#fbbf24' : 'none'}" stroke="${isCommon ? '#fbbf24' : 'currentColor'}" class="${isCommon ? 'text-amber-400' : 'text-slate-200'}"></i>`;
 
@@ -330,6 +341,8 @@ window.ui = {
                         <button onclick="app.deleteEntry('water', ${e.id})" class="text-slate-200 hover:text-rose-500 p-1 flex-shrink-0"><i data-lucide="x" size="14"></i></button></div>`;
             }
         }).join('');
+        
+        // 渲染完 HTML 後立即觸發圖示轉換
         setTimeout(() => { if (window.lucide) lucide.createIcons(); }, 0);
     },
 
@@ -338,11 +351,11 @@ window.ui = {
         const f = q ? commonFoods.filter(x => x.name.toLowerCase().includes(q)) : commonFoods;
         const l = document.getElementById('commonDropdownList');
         if (!l) return;
-        l.innerHTML = f.length === 0 ? `<div class="p-6 text-xs text-slate-400 text-center font-bold">目前無常用食物</div>` : f.map(x => `<div class="flex items-center justify-between p-4 hover:bg-slate-50 cursor-pointer border-b border-slate-50 last:border-none"><div onclick="ui.fillCommon(${x.id})" class="flex-1"><div class="text-sm font-black text-slate-700">${x.name}</div><div class="text-[10px] text-slate-400 font-bold uppercase tabular-nums">P:${parseFloat(x.p).toFixed(1)} | C:${parseFloat(x.c).toFixed(1)} | F:${parseFloat(x.f).toFixed(1)}</div></div><button onclick="app.deleteCommon(${x.id}, event)" class="p-2 text-slate-300 hover:text-rose-500 transition-all"><i data-lucide="trash-2" size="14"></i></button></div>`).join('');
+        l.innerHTML = f.length === 0 ? `<div class="p-6 text-xs text-slate-400 text-center font-bold">目前無常用食物</div>` : f.map(x => `<div class="flex items-center justify-between p-4 hover:bg-slate-50 cursor-pointer border-b border-slate-50 last:border-none"><div onclick="ui.fillFromCommon(${x.id})" class="flex-1"><div class="text-sm font-black text-slate-700">${x.name}</div><div class="text-[10px] text-slate-400 font-bold uppercase tabular-nums">P:${parseFloat(x.p).toFixed(1)} | C:${parseFloat(x.c).toFixed(1)} | F:${parseFloat(x.f).toFixed(1)}</div></div><button onclick="app.deleteCommon(${x.id}, event)" class="p-2 text-slate-300 hover:text-rose-500 transition-all"><i data-lucide="trash-2" size="14"></i></button></div>`).join('');
         setTimeout(() => { if (window.lucide) lucide.createIcons(); }, 0);
     },
 
-    fillCommon(id) {
+    fillFromCommon(id) {
         const x = commonFoods.find(f => f.id === id);
         if (x) { 
             document.getElementById('itemName').value = x.name; 
@@ -357,7 +370,8 @@ window.ui = {
     initClickOutside() {
         document.addEventListener('mousedown', (e) => {
             const foodDropdown = document.getElementById('commonFoodDropdown');
-            if (e.target.closest('button') && e.target.closest('button').innerText.includes("確認新增")) return;
+            // 排除確認按鈕點擊，防止事件被攔截
+            if (e.target.closest('button') && (e.target.innerText.includes("確認") || e.target.innerText.includes("儲存"))) return;
 
             if (foodDropdown && !foodDropdown.contains(e.target)) app.hideCommon();
             const tplDropdown = document.getElementById('templateDropdown');
@@ -374,4 +388,3 @@ window.ui = {
         setTimeout(() => b.style.opacity = '0', 2500);
     }
 };
-
