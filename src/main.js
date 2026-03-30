@@ -7,9 +7,9 @@ let historyData = {};
 let commonFoods = [];
 let customTemplates = []; 
 let editingEntryId = null; 
+let isProcessing = false; // 防止重複點擊鎖
 
 window.onload = () => {
-    // 1. 資料載入
     storage.migrate();
     const data = storage.load();
     if (data.config) config = data.config;
@@ -17,25 +17,16 @@ window.onload = () => {
     commonFoods = data.common || [];
     customTemplates = data.templates || [];
 
-    // 2. 初始化目標輸入框
     ui.syncGoalInputs();
-
-    // 3. 關鍵：初始化日曆 (確保 selectedDate 被設為今天，並寫入 DOM)
     if (window.calendar) calendar.init();
-    
-    // 4. 更新主介面
     app.updateUI(); 
-    
-    // 5. 點擊外部監聽與圖示初始化
     ui.initClickOutside();
-    if (window.lucide) lucide.createIcons();
 };
 
 window.app = {
     updateUI() {
         const date = calendar.selectedDate;
-        if (!date) return; // 安全檢查
-
+        if (!date) return;
         const data = historyData[date] || { food: [], water: [] };
         
         const tp = data.food.reduce((s, e) => s + (parseFloat(e.p) || 0), 0);
@@ -95,7 +86,7 @@ window.app = {
                 c: entry.rawC !== undefined ? entry.rawC : (entry.c / (entry.srv || 1)), 
                 f: entry.rawF !== undefined ? entry.rawF : (entry.f / (entry.srv || 1)) 
             });
-            ui.showMessage(`"${targetName}" 已存為常用`);
+            ui.showMessage(`"${targetName}" (單份) 已存為常用`);
         }
         storage.save(config, historyData, commonFoods, customTemplates);
         ui.filterCommon();
@@ -167,25 +158,61 @@ window.app = {
         ui.openModal('goalModal');
     },
 
+    // 核心修復：優化新增紀錄的穩定性
     addFood() {
-        const name = document.getElementById('itemName').value || "未命名餐點";
-        const srv = parseFloat(document.getElementById('inputServings').value) || 1;
-        const p_per = parseFloat(document.getElementById('inputProtein').value) || 0;
-        const c_per = parseFloat(document.getElementById('inputCarbs').value) || 0;
-        const f_per = parseFloat(document.getElementById('inputFat').value) || 0;
-        if (p_per === 0 && c_per === 0 && f_per === 0) return ui.showMessage("請輸入數值", "error");
+        if (isProcessing) return; // 避免連擊
+        
+        // 1. 立即關閉下拉選單以防干擾
+        this.hideCommon();
+        
+        const nameEl = document.getElementById('itemName');
+        const srvEl = document.getElementById('inputServings');
+        const pEl = document.getElementById('inputProtein');
+        const cEl = document.getElementById('inputCarbs');
+        const fEl = document.getElementById('inputFat');
+
+        const name = nameEl.value.trim() || "未命名餐點";
+        const srv = parseFloat(srvEl.value) || 1;
+        const p_per = parseFloat(pEl.value) || 0;
+        const c_per = parseFloat(cEl.value) || 0;
+        const f_per = parseFloat(fEl.value) || 0;
+
+        if (p_per === 0 && c_per === 0 && f_per === 0) {
+            return ui.showMessage("請輸入至少一項營養素", "error");
+        }
+
+        isProcessing = true; // 鎖定
+
         const entry = {
-            id: Date.now(), type: 'food', name, srv, p: p_per * srv, c: c_per * srv, f: f_per * srv, 
-            rawP: p_per, rawC: c_per, rawF: f_per,
+            id: Date.now(), 
+            type: 'food', 
+            name, 
+            srv, 
+            p: p_per * srv, 
+            c: c_per * srv, 
+            f: f_per * srv, 
+            rawP: p_per, 
+            rawC: c_per, 
+            rawF: f_per,
             kcal: Math.round(((p_per * srv) * 4) + ((c_per * srv) * 4) + ((f_per * srv) * 9)),
             time: this.getTaipeiTime()
         };
+
         const date = calendar.selectedDate;
         if (!historyData[date]) historyData[date] = { food: [], water: [] };
         historyData[date].food.unshift(entry);
-        ui.resetFoodInputs();
+
+        // 2. 儲存並更新介面
         storage.save(config, historyData, commonFoods, customTemplates);
-        this.updateUI(); ui.closeModal('foodModal'); ui.showMessage(`已記錄：${name}`);
+        this.updateUI();
+        
+        // 3. 恢復初始狀態
+        ui.resetFoodInputs();
+        ui.closeModal('foodModal'); 
+        ui.showMessage(`已記錄：${name}`);
+        
+        // 4. 延遲解除鎖定，防止連按
+        setTimeout(() => { isProcessing = false; }, 300);
     },
 
     editFoodEntry(id) {
@@ -258,7 +285,15 @@ window.ui = {
     openModal(id) { document.getElementById(id).classList.add('active'); document.body.classList.add('no-scroll'); },
     closeModal(id) { document.getElementById(id).classList.remove('active'); document.body.classList.remove('no-scroll'); },
     syncGoalInputs() { document.getElementById('targetProtein').value = config.protein; document.getElementById('targetCarbs').value = config.carbs; document.getElementById('targetFat').value = config.fat; document.getElementById('targetWater').value = config.waterGoal; },
-    resetFoodInputs() { document.getElementById('itemName').value = ""; document.getElementById('inputProtein').value = ""; document.getElementById('inputCarbs').value = ""; document.getElementById('inputFat').value = ""; document.getElementById('inputServings').value = "1"; document.getElementById('commonSearch').value = ""; app.hideCommon(); },
+    resetFoodInputs() { 
+        document.getElementById('itemName').value = ""; 
+        document.getElementById('inputProtein').value = ""; 
+        document.getElementById('inputCarbs').value = ""; 
+        document.getElementById('inputFat').value = ""; 
+        document.getElementById('inputServings').value = "1"; 
+        document.getElementById('commonSearch').value = ""; 
+        app.hideCommon(); 
+    },
     setBar(id, cur, max) { const t = document.getElementById(`${id}Text`), b = document.getElementById(`${id}Bar`), g = document.getElementById(`target${id.charAt(0).toUpperCase() + id.slice(1)}Display`); if (t) t.innerText = cur.toFixed(1); if (b) b.style.width = Math.min(cur / (max || 1) * 100, 100) + '%'; if (g) g.innerText = max; },
 
     renderList(food, water) {
@@ -269,7 +304,7 @@ window.ui = {
         list.innerHTML = all.map(e => {
             if (e.type === 'food') {
                 const isCommon = commonFoods.some(cf => cf.name.trim().toLowerCase() === e.name.trim().toLowerCase());
-                const servingText = `<span class="text-[#9E9796] text-[10px] font-black ml-1 tabular-nums">×${e.srv || 1}</span>`;
+                const servingText = (e.srv && e.srv !== 1) ? `<span class="text-[#9E9796] text-[10px] font-normal ml-1 tabular-nums">×${e.srv}</span>` : '';
                 const starIcon = `<i data-lucide="star" size="14" fill="${isCommon ? '#fbbf24' : 'none'}" stroke="${isCommon ? '#fbbf24' : 'currentColor'}" class="${isCommon ? 'text-amber-400' : 'text-slate-200'}"></i>`;
 
                 return `
@@ -313,12 +348,22 @@ window.ui = {
 
     fillCommon(id) {
         const x = commonFoods.find(f => f.id === id);
-        if (x) { document.getElementById('itemName').value = x.name; document.getElementById('inputProtein').value = x.p; document.getElementById('inputCarbs').value = x.c; document.getElementById('inputFat').value = x.f; document.getElementById('inputServings').value = 1; app.hideCommon(); }
+        if (x) { 
+            document.getElementById('itemName').value = x.name; 
+            document.getElementById('inputProtein').value = x.p; 
+            document.getElementById('inputCarbs').value = x.c; 
+            document.getElementById('inputFat').value = x.f; 
+            document.getElementById('inputServings').value = 1; 
+            app.hideCommon(); 
+        }
     },
 
     initClickOutside() {
         document.addEventListener('mousedown', (e) => {
             const foodDropdown = document.getElementById('commonFoodDropdown');
+            // 如果點擊的地方是「確認新增」按鈕，不要干擾它
+            if (e.target.closest('button') && e.target.closest('button').innerText.includes("確認新增")) return;
+
             if (foodDropdown && !foodDropdown.contains(e.target)) app.hideCommon();
             const tplDropdown = document.getElementById('templateDropdown');
             if (tplDropdown && !tplDropdown.contains(e.target)) app.hideTemplateDropdown();
