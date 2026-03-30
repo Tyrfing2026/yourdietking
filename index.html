@@ -13,21 +13,23 @@
 <body class="min-h-screen pb-24 text-slate-800 bg-slate-50">
 
     <div class="max-w-2xl mx-auto px-4 pt-8">
-        <header class="mb-8 flex justify-between items-start">
-            <div>
-                <h1 class="text-2xl font-black flex items-center gap-2 tracking-tight">
-                    <i data-lucide="layout-dashboard" class="text-emerald-500 whitespace-nowrap"></i>
-                    飲控助手
-                    <span class="text-sm font-medium text-scale-400 ml-1.5 tabular-nums">V3.0</span>
+        <!-- 頂部概覽：優化後的標題區域 -->
+        <header class="mb-8 flex justify-between items-start gap-4">
+            <div class="shrink-0">
+                <h1 class="text-xl sm:text-2xl font-black flex items-center gap-2 tracking-tight whitespace-nowrap">
+                    <i data-lucide="layout-dashboard" class="text-emerald-500"></i>
+                    <span>飲控助手</span>
+                    <span class="text-xs sm:text-sm font-medium text-slate-400 ml-0.5 tabular-nums">V3.0</span>
                 </h1>
                 <p class="text-slate-400 text-sm font-medium mt-1">
                     <span id="currentDateLabel" class="text-emerald-600 font-bold">今天</span>
                 </p>
             </div>
-            <div class="flex flex-col items-end">
-                <div class="text-[10px] font-bold text-slate-300 uppercase tracking-[0.15em] mb-1">飲水進度</div>
-                <div class="flex items-center gap-2">
-                    <div class="w-32 h-2 bg-slate-200 rounded-full overflow-hidden">
+            <!-- 飲水進度：加入 min-w 防止過度擠壓標題 -->
+            <div class="flex flex-col items-end min-w-0">
+                <div class="text-[10px] font-bold text-slate-300 uppercase tracking-[0.15em] mb-1 whitespace-nowrap">飲水進度</div>
+                <div class="flex items-center gap-2 w-full">
+                    <div class="w-24 sm:w-32 h-2 bg-slate-200 rounded-full overflow-hidden shrink-0">
                         <div id="waterMainBar" class="h-full bg-sky-400 progress-bar" style="width: 0%"></div>
                     </div>
                     <span id="waterMainText" class="text-xs font-black text-sky-600 tabular-nums">0%</span>
@@ -35,6 +37,7 @@
             </div>
         </header>
 
+        <!-- 主數據區域 -->
         <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
             <div class="glass-card p-6 rounded-[2rem] shadow-sm text-center relative">
                 <div class="relative inline-flex items-center justify-center">
